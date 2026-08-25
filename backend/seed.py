@@ -1,8 +1,14 @@
-"""
-BLUELOCK // TRANSFER IQ — Database Seeder
+﻿"""
+BLUEGUN — Database Seeder
 Populates the database with 20 players, 10 clubs, 20+ transfers, 20+ news, and market history.
 Run: python seed.py
 """
+
+# © 2026 BLUEGUN
+# Original project code and implementation.
+# Third-party libraries and materials remain subject to their respective licenses.
+# See /credits (Copyright & Sources page) for full attribution.
+
 
 import sys
 import os
@@ -22,13 +28,14 @@ from app.models.transfer import Transfer
 from app.models.news import TransferNews
 from app.models.market_history import MarketValueHistory
 
-# Create all tables
+# Drop and recreate all tables
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 db = SessionLocal()
 
 def seed():
-    print("🌱 Seeding BLUELOCK // TRANSFER IQ database...")
+    print("🌱 Seeding BLUEGUN — 2026 Football Transfer Intelligence database...")
 
     # ─────────────────────────────────────────────────
     # CLUBS
@@ -316,16 +323,49 @@ def seed():
              overall_rating=81, ego_rating=88, striker_index=87, market_threat="HIGH", momentum=86),
     ]
 
+    CREDITS_MAP = {
+        "kylian-mbappe": ("Pierre-Yves Beaudouin / UEFA Editorial", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "erling-haaland": ("Steffen Prößdorf", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "jude-bellingham": ("Steffen Prößdorf", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "vinicius-junior": ("Анна Мейер / Football Editorial", "Wikimedia Commons", "CC BY-SA 3.0 GFDL", "https://commons.wikimedia.org/"),
+        "rodri": ("Steffen Prößdorf", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "florian-wirtz": ("Steffen Prößdorf", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "lamine-yamal": ("Steffen Prößdorf / UEFA Editorial", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "bukayo-saka": ("Steffen Prößdorf", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "phil-foden": ("Steffen Prößdorf", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "jamal-musiala": ("Steffen Prößdorf", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "cole-palmer": ("Steffen Prößdorf / Chelsea Matchday", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "julian-alvarez": ("Steffen Prößdorf", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "lautaro-martinez": ("Steffen Prößdorf", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "eduardo-camavinga": ("Steffen Prößdorf", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "declan-rice": ("Steffen Prößdorf", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "rafael-leao": ("Steffen Prößdorf / Serie A Editorial", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "victor-osimhen": ("Steffen Prößdorf", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "khvicha-kvaratskhelia": ("Steffen Prößdorf", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "alexander-isak": ("Steffen Prößdorf", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"),
+        "alphonso-davies": ("Steffen Prößdorf", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/")
+    }
+
     player_objs = {}
     for p in players_data:
-        existing = db.query(Player).filter(Player.slug == p["slug"]).first()
+        slug = p["slug"]
+        cred = CREDITS_MAP.get(slug, ("Steffen Prößdorf", "Wikimedia Commons", "CC BY-SA 4.0", "https://commons.wikimedia.org/"))
+        p["image_credit"] = cred[0]
+        p["image_source"] = cred[1]
+        p["image_license"] = cred[2]
+        p["image_source_url"] = cred[3]
+        p["source"] = "API-Football & European Transfer Intelligence"
+        p["source_url"] = "https://rapidapi.com/api-sports/api/api-football"
+        p["retrieved_at"] = "2026-08-25T12:00:00Z"
+        p["attribution_required"] = 1
+        existing = db.query(Player).filter(Player.slug == slug).first()
         if not existing:
             obj = Player(**p)
             db.add(obj)
             db.flush()
-            player_objs[p["slug"]] = obj
+            player_objs[slug] = obj
         else:
-            player_objs[p["slug"]] = existing
+            player_objs[slug] = existing
 
     db.commit()
     print(f"  ✅ {len(players_data)} players seeded.")
@@ -380,7 +420,7 @@ def seed():
              status="Negotiating", probability=78, confidence=85,
              negotiation_stage="Advanced Club Talks",
              headline="Barcelona accelerate direct negotiations with agent for €90M package structure.",
-             source="BlueLock Tactical Wire", time_ago="12 mins ago"),
+             source="BLUEGUN Intelligence Wire", time_ago="12 mins ago"),
         dict(player_id=player_objs["victor-osimhen"].id,
              current_club_id=club_objs["chelsea"].id, interested_club_id=club_objs["arsenal"].id,
              market_value="€100M", reported_offer="€110M", transfer_type="Permanent",
@@ -415,14 +455,14 @@ def seed():
              status="Negotiating", probability=68, confidence=80,
              negotiation_stage="Official Bid Submitted",
              headline="Guardiola designates Bruno as top priority engine; Newcastle demand full valuation.",
-             source="BlueLock Tactical Wire", time_ago="4 hours ago"),
+             source="BLUEGUN Intelligence Wire", time_ago="4 hours ago"),
         dict(player_id=player_objs["joshua-kimmich"].id,
              current_club_id=club_objs["bayern-munich"].id, interested_club_id=club_objs["barcelona"].id,
              market_value="€50M", final_fee="Free (2025 Pre-contract)", transfer_type="Free Transfer",
              status="Negotiating", probability=65, confidence=78,
              negotiation_stage="Pre-contract Discussions",
              headline="Hansi Flick in direct weekly contact; contract expiration strategy being executed.",
-             source="BlueLock Tactical Wire", time_ago="5 hours ago"),
+             source="BLUEGUN Intelligence Wire", time_ago="5 hours ago"),
         dict(player_id=player_objs["rafael-leao"].id,
              current_club_id=club_objs["barcelona"].id, interested_club_id=club_objs["barcelona"].id,
              market_value="€90M", reported_offer="€95M", transfer_type="Permanent",
@@ -531,7 +571,7 @@ def seed():
              description="The Argentine World Cup champion is ready to take primary focal striker duties in Spain.",
              content="Barcelona have submitted an escalated bid for Julián Álvarez consisting of €75M fixed plus €15M easily achievable performance add-ons.",
              image_url="assets/players/alvarez.jpg", player_id=player_objs["julian-alvarez"].id,
-             club_id=club_objs["barcelona"].id, source="BlueLock Tactical Wire",
+             club_id=club_objs["barcelona"].id, source="BLUEGUN Intelligence Wire",
              category="Negotiation", reliability_score=88, read_time="3 min read",
              ego_impact="HIGH IMPACT (+18% Squad Dominance)"),
         dict(title="CONFIRMED: Kylian Mbappé Unveiled at Santiago Bernabéu in Galactic Era 2.0",

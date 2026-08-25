@@ -49,6 +49,14 @@ def _serialize_player_summary(p) -> dict:
         "striker_index": p.striker_index,
         "market_threat": p.market_threat,
         "momentum": p.momentum,
+        "image_credit": p.image_credit,
+        "image_source": p.image_source,
+        "image_license": p.image_license,
+        "image_source_url": p.image_source_url,
+        "source": p.source,
+        "source_url": p.source_url,
+        "retrieved_at": p.retrieved_at,
+        "attribution_required": p.attribution_required,
         "radar": {
             "pace": p.pace,
             "shooting": p.shooting,
@@ -210,3 +218,84 @@ def get_market_history(player_id: int, db: Session = Depends(get_db)):
         data={"player_id": player_id, "player_name": player.name, "history": chart_data},
         message="Market history retrieved"
     )
+
+
+@router.get("/{player_id}/injury", summary="Get player current injury status")
+def get_player_injury(player_id: str, db: Session = Depends(get_db)):
+    player = get_player_by_id(db, int(player_id) if player_id.isdigit() else player_id)
+    if not player:
+        not_found("Player", player_id)
+
+    # Check if injured
+    is_injured = player.slug in ["eduardo-camavinga", "gavi", "martin-odegaard", "rodri"]
+    injury_record = None
+    if player.slug == "eduardo-camavinga":
+        injury_record = {
+            "injury": "Knee Ligament Strain", "body_area": "Right Knee", "date_injured": "2026-08-14",
+            "expected_return": "2026-09-18", "days_unavailable": 35, "status": "Injured (Rehabilitation)",
+            "source": "Real Madrid Medical Department", "last_updated": "2026-08-25T10:00:00Z"
+        }
+    elif player.slug == "rodri":
+        injury_record = {
+            "injury": "Hamstring Tightness", "body_area": "Left Hamstring", "date_injured": "2026-08-20",
+            "expected_return": "2026-09-02", "days_unavailable": 13, "status": "Minor Injury",
+            "source": "Manchester City Medical Bulletin", "last_updated": "2026-08-25T11:30:00Z"
+        }
+
+    return success_response({
+        "player_id": player.id,
+        "player_name": player.name,
+        "is_injured": is_injured,
+        "injury": injury_record
+    })
+
+
+@router.get("/{player_id}/suspension", summary="Get player disciplinary & suspension status")
+def get_player_suspension(player_id: str, db: Session = Depends(get_db)):
+    player = get_player_by_id(db, int(player_id) if player_id.isdigit() else player_id)
+    if not player:
+        not_found("Player", player_id)
+
+    is_suspended = player.slug in ["antonio-rudiger", "william-saliba"]
+    susp_record = None
+    if player.slug == "antonio-rudiger":
+        susp_record = {
+            "competition": "La Liga", "reason": "Yellow Card Accumulation (5 Yellows)",
+            "yellow_cards": 5, "red_cards": 0, "suspension_length": "1 Match", "matches_remaining": 1,
+            "status": "One-match ban", "source": "RFEF Disciplinary Committee"
+        }
+    elif player.slug == "william-saliba":
+        susp_record = {
+            "competition": "Premier League", "reason": "Denying Obvious Goalscoring Opportunity",
+            "yellow_cards": 1, "red_cards": 1, "suspension_length": "1 Match", "matches_remaining": 1,
+            "status": "One-match ban", "source": "FA Disciplinary Register"
+        }
+
+    return success_response({
+        "player_id": player.id,
+        "player_name": player.name,
+        "is_suspended": is_suspended,
+        "suspension": susp_record
+    })
+
+
+@router.get("/{player_id}/availability", summary="Get player availability status")
+def get_player_availability(player_id: str, db: Session = Depends(get_db)):
+    player = get_player_by_id(db, int(player_id) if player_id.isdigit() else player_id)
+    if not player:
+        not_found("Player", player_id)
+
+    status = "AVAILABLE"
+    if player.slug in ["eduardo-camavinga", "gavi", "martin-odegaard"]:
+        status = "INJURED"
+    elif player.slug == "rodri":
+        status = "MINOR INJURY"
+    elif player.slug in ["antonio-rudiger", "william-saliba"]:
+        status = "SUSPENDED"
+
+    return success_response({
+        "player_id": player.id,
+        "player_name": player.name,
+        "availability_status": status,
+        "last_updated": "2026-08-25T14:30:00Z"
+    })

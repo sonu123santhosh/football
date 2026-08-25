@@ -28,6 +28,11 @@ class Club(Base):
     ego_rank = Column(String(100), nullable=True)
     description = Column(Text, nullable=True)
 
+    # Attribution & Trademark Metadata
+    trademark_notice = Column(String(255), nullable=True, default="Club crest, name and trademarks belong to the respective football club.")
+    source = Column(String(150), nullable=True, default="Official Club Register")
+    source_url = Column(String(500), nullable=True)
+
     # Relationships
     players = relationship("Player", back_populates="current_club", foreign_keys="Player.current_club_id")
     incoming_transfers = relationship("Transfer", back_populates="interested_club", foreign_keys="Transfer.interested_club_id")

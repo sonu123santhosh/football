@@ -1,6 +1,13 @@
+﻿/**
+ * BLUEGUN — 2026 Football Transfer Intelligence
+ * Custom Zero-Dependency SVG Radar & Valuation Trajectory Chart Engine
+ */
+
 /**
- * BLUELOCK // TRANSFER IQ - Custom SVG Visuals & Chart Engine
- * Lightweight, zero-dependency SVG Radar and Line Chart generators.
+ * © 2026 BLUEGUN
+ * Original project code and implementation.
+ * Third-party libraries and materials remain subject to their respective licenses.
+ * See /credits (Copyright & Sources page) for full attribution.
  */
 
 /**

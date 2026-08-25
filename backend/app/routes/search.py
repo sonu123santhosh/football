@@ -5,6 +5,7 @@ GET /api/search?q=   — Global categorized search across players, clubs, and ne
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+import unicodedata
 
 from app.database import get_db
 from app.models.player import Player
@@ -15,53 +16,59 @@ from app.utils.helpers import success_response
 router = APIRouter(prefix="/api/search", tags=["Search"])
 
 
+def _normalize(text: str) -> str:
+    """Strip accents/diacritics and lowercase for fuzzy matching."""
+    if not text:
+        return ""
+    text = (
+        text.lower()
+        .replace("ø", "o").replace("Ø", "o")
+        .replace("æ", "ae").replace("Æ", "ae")
+        .replace("ß", "ss")
+    )
+    return "".join(
+        c for c in unicodedata.normalize("NFD", text)
+        if unicodedata.category(c) != "Mn"
+    )
+
+
 @router.get(
     "",
     summary="Global search",
     description="Search across players, clubs, and transfer news simultaneously. Returns categorized results.",
 )
 def global_search(
-    q: str = Query(..., min_length=2, description="Search query string"),
+    q: str = Query(..., min_length=1, description="Search query string"),
     limit: int = Query(10, le=50, description="Max results per category"),
     db: Session = Depends(get_db),
 ):
-    term = f"%{q}%"
+    norm_q = _normalize(q)
 
-    # Players
-    players = (
-        db.query(Player)
-        .filter(
-            Player.name.ilike(term) |
-            Player.nationality.ilike(term) |
-            Player.position.ilike(term)
-        )
-        .limit(limit)
-        .all()
-    )
+    # Players — fetch all and filter in Python for accent-insensitive matching
+    all_players = db.query(Player).limit(500).all()
+    players = [
+        p for p in all_players
+        if norm_q in _normalize(p.name)
+        or norm_q in _normalize(p.nationality or "")
+        or norm_q in _normalize(p.position or "")
+    ][:limit]
 
-    # Clubs
-    clubs = (
-        db.query(Club)
-        .filter(
-            Club.name.ilike(term) |
-            Club.league.ilike(term) |
-            Club.country.ilike(term)
-        )
-        .limit(limit)
-        .all()
-    )
+    # Clubs — same Python-side normalization
+    all_clubs = db.query(Club).limit(100).all()
+    clubs = [
+        c for c in all_clubs
+        if norm_q in _normalize(c.name)
+        or norm_q in _normalize(c.league or "")
+        or norm_q in _normalize(c.country or "")
+    ][:limit]
 
-    # News
-    news = (
-        db.query(TransferNews)
-        .filter(
-            TransferNews.title.ilike(term) |
-            TransferNews.description.ilike(term)
-        )
-        .order_by(TransferNews.published_at.desc())
-        .limit(limit)
-        .all()
-    )
+    # News — Python-side
+    all_news = db.query(TransferNews).order_by(TransferNews.published_at.desc()).limit(200).all()
+    news = [
+        n for n in all_news
+        if norm_q in _normalize(n.title)
+        or norm_q in _normalize(n.description or "")
+    ][:limit]
 
     results = {
         "query": q,

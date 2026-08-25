@@ -23,6 +23,9 @@ class ClubBase(BaseModel):
     president: Optional[str] = None
     ego_rank: Optional[str] = None
     description: Optional[str] = None
+    trademark_notice: Optional[str] = "Club names, logos, and trademarks belong to their respective owners."
+    source: Optional[str] = "Official Club Intelligence Register"
+    source_url: Optional[str] = None
 
 class ClubSummary(ClubBase):
     id: int

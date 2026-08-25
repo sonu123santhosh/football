@@ -1,4 +1,4 @@
-"""
+﻿"""
 Transfer Model Definition
 Tracks live market operations, club-to-club movements, valuation spreads, and probability intelligence.
 """
@@ -29,8 +29,10 @@ class Transfer(Base):
     contract_status = Column(String(100), nullable=True)
     headline = Column(Text, nullable=True)
     
-    source = Column(String(150), nullable=True, default="BlueLock Tactical Wire")
+    source = Column(String(150), nullable=True, default="BLUEGUN Intelligence Wire")
     source_url = Column(String(500), nullable=True)
+    retrieved_at = Column(String(100), nullable=True)
+    attribution_required = Column(Integer, default=1)
     time_ago = Column(String(50), nullable=True)
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

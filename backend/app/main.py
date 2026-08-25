@@ -1,7 +1,13 @@
-"""
-BLUELOCK // TRANSFER IQ — FastAPI Backend
+﻿"""
+BLUEGUN — FastAPI Backend
 Main application entry point.
 """
+
+# © 2026 BLUEGUN
+# Original project code and implementation.
+# Third-party libraries and materials remain subject to their respective licenses.
+# See /credits (Copyright & Sources page) for full attribution.
+
 
 import os
 import logging
@@ -80,18 +86,18 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="BLUELOCK // TRANSFER IQ API",
+    title="BLUEGUN — 2026 Football Transfer Intelligence API",
     description=(
-        "🔵 Futuristic football transfer intelligence platform API. "
-        "Provides real-time transfer feeds, player profiles, club dossiers, "
-        "market valuations, global search, and player comparison. "
-        "Frontend: http://localhost:3000"
+        "⚡ Next-generation 2026 football transfer market intelligence and scouting analytics API. "
+        "Provides real-time transfer feeds, player scouting files, club war rooms, "
+        "market pressure valuations, global search, and ego clash comparisons. "
+        "Frontend: http://localhost:3000 — Tagline: 'ENTER THE TRANSFER BATTLEFIELD.'"
     ),
-    version="1.0.0",
+    version="2.0.0",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
-    contact={"name": "BlueLock Transfer IQ", "email": "intel@bluelocktransferiq.com"},
+    contact={"name": "BLUEGUN Transfer Intelligence", "email": "intel@bluegun.football"},
 )
 
 # CORS Middleware — allows frontend to consume the API
@@ -132,12 +138,13 @@ async def not_found_handler(request: Request, exc):
 
 @app.get("/", tags=["Health"])
 @app.get("/health", tags=["Health"])
+@app.get("/api/health", tags=["Health"])
 def root():
     """Health check & API info."""
     return {
         "success": True,
-        "message": "⚽ BLUELOCK // TRANSFER IQ API is live",
-        "version": "1.0.0",
+        "message": "⚡ BLUEGUN — 2026 Football Transfer Intelligence API is live",
+        "version": "2.0.0",
         "docs": "/docs",
         "redoc": "/redoc",
         "endpoints": {

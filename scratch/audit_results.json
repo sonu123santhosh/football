@@ -1,0 +1,66 @@
+{
+  "api_tests": {
+    "passed": 26,
+    "failed": 0,
+    "details": [
+      "PASS: GET /api/health -> 200",
+      "PASS: GET /api/players -> 200",
+      "PASS: GET /api/players/1 -> 200",
+      "PASS: GET /api/players/99999 -> 404",
+      "PASS: GET /api/players/1/stats -> 200",
+      "PASS: GET /api/players/1/transfers -> 200",
+      "PASS: GET /api/players/1/market-history -> 200",
+      "PASS: GET /api/players/1/injury -> 200",
+      "PASS: GET /api/players/1/suspension -> 200",
+      "PASS: GET /api/players/1/availability -> 200",
+      "PASS: GET /api/clubs -> 200",
+      "PASS: GET /api/clubs/real-madrid -> 200",
+      "PASS: GET /api/clubs/non-existent-club-id -> 404",
+      "PASS: GET /api/clubs/real-madrid/squad -> 200",
+      "PASS: GET /api/clubs/real-madrid/players -> 200",
+      "PASS: GET /api/clubs/real-madrid/injuries -> 200",
+      "PASS: GET /api/clubs/real-madrid/suspensions -> 200",
+      "PASS: GET /api/clubs/real-madrid/availability -> 200",
+      "PASS: GET /api/clubs/real-madrid/transfers -> 200",
+      "PASS: GET /api/clubs/real-madrid/contracts -> 200",
+      "PASS: GET /api/clubs/real-madrid/statistics -> 200",
+      "PASS: GET /api/transfers -> 200",
+      "PASS: GET /api/transfers/stats -> 200",
+      "PASS: GET /api/news -> 200",
+      "PASS: GET /api/search?q=mbappe -> 200",
+      "PASS: GET /api/compare?player_a=1&player_b=2 -> 200"
+    ]
+  },
+  "db_integrity": {
+    "passed": 4,
+    "failed": 0,
+    "details": []
+  },
+  "data_consistency": {
+    "passed": 0,
+    "failed": 0,
+    "details": []
+  },
+  "search_normalization": {
+    "passed": 6,
+    "failed": 0,
+    "details": [
+      "PASS: query 'mbappe' matched 'Kylian Mbapp\u00e9'",
+      "PASS: query 'haaland' matched 'Erling Haaland'",
+      "PASS: query 'odegaard' matched 'Martin \u00d8degaard'",
+      "PASS: query 'wirtz' matched 'Florian Wirtz'",
+      "PASS: query 'leao' matched 'Rafael Le\u00e3o'",
+      "PASS: query 'vinicius' matched 'Vin\u00edcius J\u00fanior'"
+    ]
+  },
+  "security_checks": {
+    "passed": 2,
+    "failed": 0,
+    "details": []
+  },
+  "sources_registry": {
+    "passed": 2,
+    "failed": 0,
+    "details": []
+  }
+}

@@ -20,8 +20,11 @@ class TransferNews(Base):
     player_id = Column(Integer, ForeignKey("players.id"), nullable=True, index=True)
     club_id = Column(Integer, ForeignKey("clubs.id"), nullable=True, index=True)
 
-    source = Column(String(150), nullable=False, default="BlueLock Intelligence Wire")
+    source = Column(String(150), nullable=False, default="BLUEGUN Intelligence Wire")
     source_url = Column(String(500), nullable=True)
+    author = Column(String(100), nullable=True, default="Transfer Desk")
+    retrieved_at = Column(String(100), nullable=True)
+    attribution_required = Column(Integer, default=1)
     published_at = Column(DateTime, default=datetime.utcnow, index=True)
     category = Column(String(50), default="Negotiation", index=True) # Confirmed, Rumour, Negotiation, Loan, Free Transfer
     reliability_score = Column(Integer, default=85) # 1 - 100
