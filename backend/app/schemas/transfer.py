@@ -1,4 +1,4 @@
-"""
+﻿"""
 Transfer Pydantic Schemas
 """
 
@@ -21,8 +21,10 @@ class TransferBase(BaseModel):
     negotiation_stage: Optional[str] = None
     contract_status: Optional[str] = None
     headline: Optional[str] = None
-    source: Optional[str] = "BlueLock Tactical Wire"
+    source: Optional[str] = "BLUEGUN Intelligence Wire"
     source_url: Optional[str] = None
+    retrieved_at: Optional[str] = None
+    attribution_required: Optional[int] = 1
     time_ago: Optional[str] = "Recently"
 
 class TransferResponse(TransferBase):

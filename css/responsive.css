@@ -1,5 +1,12 @@
+﻿/**
+ * BLUEGUN — 2026 Football Transfer Intelligence
+ * Responsive Breakpoints & Mobile Drawer
+ */
+
 /**
- * BLUELOCK // TRANSFER IQ - Responsive Breakpoints & Mobile Drawer
+ * © 2026 BLUEGUN — Original CSS Design System
+ * Third-party fonts and libraries remain subject to their respective licenses.
+ * See /credits (Copyright & Sources page) for full attribution.
  */
 
 /* ==========================================================================
@@ -185,4 +192,108 @@
     text-align: center;
     gap: 16px;
   }
+
+  /* War Room Spotlight Grid */
+  .war-room-spotlight-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Transfers Masonry */
+  .transfers-masonry-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Club Intel tabs - scrollable */
+  .club-intel-tabs-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+    display: flex;
+    flex-wrap: nowrap;
+  }
+  .club-intel-tabs-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Market table - horizontal scroll */
+  .market-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Player stats table */
+  .player-stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Squad table in club intel */
+  .squad-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Credits page */
+  .credits-category-filters {
+    overflow-x: auto;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+  .credits-category-filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Source modal */
+  .bl-source-modal .modal-panel {
+    width: 96vw;
+    margin: 16px auto;
+  }
+
+  /* Comparison radar */
+  #comparisonRadarContainer {
+    height: 260px !important;
+  }
+
+  /* Top talents mini grid */
+  .top-talents-mini-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
 }
+
+/* Extra small (<= 380px) */
+@media (max-width: 380px) {
+  .top-talents-mini-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .player-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .h2h-stat-row {
+    grid-template-columns: 1fr 80px 1fr;
+    font-size: 12px;
+  }
+}
+
+/* ==========================================================================
+   Accessibility — Focus Styles
+   ========================================================================== */
+*:focus-visible {
+  outline: 2px solid var(--neon-cyan, #00f0ff);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--neon-cyan, #00f0ff);
+  outline-offset: 3px;
+}
+
+/* Prevent horizontal page overflow globally */
+body {
+  overflow-x: hidden;
+}
+

@@ -63,6 +63,16 @@ class Player(Base):
     market_threat = Column(String(50), default="HIGH") # SUPREME, CRITICAL, VERY HIGH, HIGH, MEDIUM
     momentum = Column(Integer, default=80)
 
+    # Attribution & Licensing Metadata
+    image_credit = Column(String(200), nullable=True)
+    image_source = Column(String(200), nullable=True, default="Wikimedia Commons")
+    image_license = Column(String(100), nullable=True, default="CC BY-SA 4.0")
+    image_source_url = Column(String(500), nullable=True)
+    source = Column(String(200), nullable=True, default="API-Football & European Transfer Intelligence")
+    source_url = Column(String(500), nullable=True)
+    retrieved_at = Column(String(100), nullable=True)
+    attribution_required = Column(Integer, default=1)
+
     # Relationships
     current_club = relationship("Club", back_populates="players", foreign_keys=[current_club_id])
     transfers = relationship("Transfer", back_populates="player", cascade="all, delete-orphan")

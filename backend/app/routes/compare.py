@@ -3,6 +3,7 @@ Compare Router
 GET /api/compare?player1={id}&player2={id}  — Side-by-side player comparison matrix
 """
 
+from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -30,15 +31,23 @@ def _stat_winner(val1, val2, lower_better: bool = False) -> str:
     ),
 )
 def compare_players(
-    player1: int = Query(..., description="ID of the first player"),
-    player2: int = Query(..., description="ID of the second player"),
+    player1: Optional[int] = Query(None, description="ID of the first player"),
+    player2: Optional[int] = Query(None, description="ID of the second player"),
+    player_a: Optional[int] = Query(None, description="Alias for first player ID"),
+    player_b: Optional[int] = Query(None, description="Alias for second player ID"),
     db: Session = Depends(get_db),
 ):
-    if player1 == player2:
+    p1_id = player1 or player_a
+    p2_id = player2 or player_b
+
+    if not p1_id or not p2_id:
+        raise bad_request("Provide two player IDs to compare using ?player1={id}&player2={id} or ?player_a={id}&player_b={id}")
+
+    if p1_id == p2_id:
         raise bad_request("Cannot compare a player with themselves. Provide two different player IDs.")
 
-    p1 = get_player_by_id(db, player1)
-    p2 = get_player_by_id(db, player2)
+    p1 = get_player_by_id(db, p1_id)
+    p2 = get_player_by_id(db, p2_id)
 
     if not p1:
         raise not_found("Player", player1)

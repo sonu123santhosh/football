@@ -59,6 +59,14 @@ class PlayerBase(BaseModel):
     striker_index: int = 88
     market_threat: str = "HIGH"
     momentum: int = 80
+    image_credit: Optional[str] = None
+    image_source: Optional[str] = "Wikimedia Commons"
+    image_license: Optional[str] = "CC BY-SA 4.0"
+    image_source_url: Optional[str] = None
+    source: Optional[str] = "API-Football Reference"
+    source_url: Optional[str] = None
+    retrieved_at: Optional[str] = None
+    attribution_required: Optional[int] = 1
 
 class PlayerSummary(PlayerBase):
     id: int

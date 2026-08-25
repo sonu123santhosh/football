@@ -1,19 +1,35 @@
-/**
- * BLUELOCK // TRANSFER IQ - Core Application Controller
- * Single-page router, reactive state manager, global search, and interactive controllers.
+﻿/**
+ * BLUEGUN — 2026 Football Transfer & Club Intelligence Platform
+ * Core Application Controller & Reactive Router
+ * Tagline: "ENTER THE TRANSFER BATTLEFIELD."
  */
 
-import { CLUBS, PLAYERS, LIVE_TRANSFERS, TRANSFER_NEWS, DASHBOARD_STATS } from './data.js';
+/**
+ * © 2026 BLUEGUN
+ * Original project code and implementation.
+ * Third-party libraries and materials remain subject to their respective licenses.
+ * See /credits (Copyright & Sources page) for full attribution.
+ */
+
+
+import { CLUBS, PLAYERS, LIVE_TRANSFERS, TRANSFER_NEWS, DASHBOARD_STATS, DATA_SOURCES } from './data.js';
+import { SOURCES_REGISTRY } from './sources.js';
 import {
   renderTransferCard,
   renderPlayerCard,
   renderClubCard,
   renderNewsCard,
   renderPlayerProfile,
-  renderClubProfile,
+  renderClubIntelligenceView,
   renderTransferMarketTable,
   renderComparisonView,
+  renderCreditsView,
+  renderSourceModalContent,
+  renderGlobalFooter,
+  getPrivacyPolicyHtml,
+  getTermsOfUseHtml,
   getStatusBadge,
+  getAvailabilityBadge,
   PLAYER_IMG_FALLBACK,
   CLUB_IMG_FALLBACK
 } from './components.js';
@@ -21,9 +37,16 @@ import { renderRadarChart, renderMarketValueChart } from './chart.js';
 
 // Application State
 const state = {
-  currentView: 'home', // 'home' | 'transfers' | 'players' | 'clubs' | 'news' | 'market' | 'compare' | 'player-profile' | 'club-profile'
-  selectedPlayerId: 'julian-alvarez',
+  currentView: 'home', // 'home' | 'transfers' | 'players' | 'clubs' | 'news' | 'market' | 'compare' | 'player-profile' | 'club-profile' | 'credits'
+  selectedPlayerId: 'florian-wirtz',
   selectedClubId: 'real-madrid',
+  activeClubTab: 'squad', // 'squad' | 'injuries' | 'suspensions' | 'transfers' | 'contracts' | 'statistics'
+  clubSquadFilters: {
+    position: 'ALL',
+    availability: 'ALL'
+  },
+  creditsFilter: 'ALL',
+  creditsSearchQuery: '',
   comparePlayerAId: 'kylian-mbappe',
   comparePlayerBId: 'erling-haaland',
   transferFilter: 'ALL',
@@ -46,6 +69,11 @@ let mobileMenuBtn;
 let mobileNavDrawer;
 let notifBtn;
 let notifModal;
+let legalModal;
+let legalModalTitle;
+let legalModalBody;
+let sourceModal;
+let sourceModalBody;
 
 /**
  * Initialize Application
@@ -54,6 +82,15 @@ document.addEventListener('DOMContentLoaded', () => {
   initDomElements();
   initEventListeners();
   initKeyboardShortcuts();
+  
+  // Handle URL Hash if present
+  const hash = window.location.hash.replace('#', '');
+  if (hash === 'credits' || hash === 'copyright' || hash === 'sources') {
+    state.currentView = 'credits';
+  } else if (hash && ['transfers', 'players', 'clubs', 'news', 'market', 'compare'].includes(hash)) {
+    state.currentView = hash;
+  }
+  
   renderCurrentView();
   startHeroTicker();
 });
@@ -68,20 +105,110 @@ function initDomElements() {
   mobileNavDrawer = document.getElementById('mobileNavDrawer');
   notifBtn = document.getElementById('btnNotifications');
   notifModal = document.getElementById('notifModal');
+  legalModal = document.getElementById('legalModal');
+  legalModalTitle = document.getElementById('legalModalTitle');
+  legalModalBody = document.getElementById('legalModalBody');
+  sourceModal = document.getElementById('sourceModal');
+  sourceModalBody = document.getElementById('sourceModalBody');
 }
 
 /**
  * Global Event Listeners
  */
 function initEventListeners() {
-  // Navigation Bar Links (Desktop & Mobile)
-  document.querySelectorAll('[data-view]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+  // Navigation & Action Buttons
+  document.addEventListener('click', (e) => {
+    // Micro Source Inspector Button Trigger
+    const srcBtn = e.target.closest('[data-source-id]');
+    if (srcBtn) {
       e.preventDefault();
-      const view = btn.getAttribute('data-view');
-      navigateTo(view);
+      e.stopPropagation();
+      const sId = srcBtn.getAttribute('data-source-id');
+      openSourceModal(sId);
+      return;
+    }
+
+    // View Navigation Trigger
+    const viewBtn = e.target.closest('[data-view]');
+    if (viewBtn) {
+      e.preventDefault();
+      const view = viewBtn.getAttribute('data-view');
+      const pId = viewBtn.getAttribute('data-player-id');
+      const cId = viewBtn.getAttribute('data-club-id');
+      navigateTo(view === 'copyright' ? 'credits' : view, { playerId: pId, clubId: cId });
       closeMobileDrawer();
-    });
+      return;
+    }
+
+    // Credits Category Filter Buttons
+    const creditsFilterBtn = e.target.closest('[data-credits-filter]');
+    if (creditsFilterBtn) {
+      e.preventDefault();
+      state.creditsFilter = creditsFilterBtn.getAttribute('data-credits-filter');
+      renderCurrentView();
+      return;
+    }
+
+    // Club Intelligence Tab Selector
+    const clubTabBtn = e.target.closest('[data-club-tab]');
+    if (clubTabBtn) {
+      e.preventDefault();
+      state.activeClubTab = clubTabBtn.getAttribute('data-club-tab');
+      renderCurrentView();
+      return;
+    }
+
+    // Legal Modal Triggers (Privacy / Terms)
+    const legalTrigger = e.target.closest('.footer-legal-modal-trigger');
+    if (legalTrigger) {
+      e.preventDefault();
+      const modalType = legalTrigger.getAttribute('data-modal');
+      openLegalModal(modalType);
+      return;
+    }
+
+    // Back to dashboard buttons
+    if (e.target.closest('.btn-back-dashboard')) {
+      e.preventDefault();
+      navigateTo('home');
+      return;
+    }
+
+    // View Player Profile Trigger
+    const btnPlayer = e.target.closest('.btn-view-player');
+    if (btnPlayer) {
+      e.preventDefault();
+      const pId = btnPlayer.getAttribute('data-player-id');
+      navigateTo('player-profile', { playerId: pId });
+      return;
+    }
+
+    // View Club Intelligence Profile Trigger
+    const btnClub = e.target.closest('.btn-view-club');
+    if (btnClub) {
+      e.preventDefault();
+      const cId = btnClub.getAttribute('data-club-id');
+      navigateTo('club-profile', { clubId: cId });
+      return;
+    }
+
+    // Quick Compare Trigger
+    const btnCompare = e.target.closest('.btn-quick-compare');
+    if (btnCompare) {
+      e.preventDefault();
+      const pId = btnCompare.getAttribute('data-compare-id');
+      navigateTo('compare', { compareA: pId });
+      return;
+    }
+
+    // Read News Story Trigger
+    const btnNews = e.target.closest('.btn-read-news');
+    if (btnNews) {
+      e.preventDefault();
+      const nId = btnNews.getAttribute('data-news-id');
+      openNewsModal(nId);
+      return;
+    }
   });
 
   // Mobile Drawer Toggle
@@ -116,18 +243,25 @@ function initEventListeners() {
     closeNotifBtn.addEventListener('click', closeNotifModal);
   }
 
+  // Legal Modal Close Button
+  const closeLegalBtn = document.getElementById('closeLegalBtn');
+  if (closeLegalBtn) {
+    closeLegalBtn.addEventListener('click', closeLegalModal);
+  }
+
   // Click Outside Modals
   window.addEventListener('click', (e) => {
     if (e.target === globalSearchModal) closeSearchModal();
     if (e.target === notifModal) closeNotifModal();
+    const newsModal = document.getElementById('newsModal');
+    if (e.target === newsModal) closeNewsModal();
+    if (e.target === legalModal) closeLegalModal();
+    if (e.target === sourceModal) closeSourceModal();
   });
-
-  // Delegated Click Handlers for dynamic cards, buttons & tables
-  document.addEventListener('click', handleGlobalClicks);
 }
 
 /**
- * Keyboard Shortcuts (e.g. Ctrl+K or / to search, Esc to close)
+ * Keyboard Shortcuts
  */
 function initKeyboardShortcuts() {
   window.addEventListener('keydown', (e) => {
@@ -135,7 +269,7 @@ function initKeyboardShortcuts() {
       e.preventDefault();
       openSearchModal();
     }
-    if (e.key === '/' && document.activeElement !== globalSearchInput && !globalSearchModal.classList.contains('active')) {
+    if (e.key === '/' && document.activeElement !== globalSearchInput && !globalSearchModal?.classList.contains('active')) {
       e.preventDefault();
       openSearchModal();
     }
@@ -143,6 +277,8 @@ function initKeyboardShortcuts() {
       closeSearchModal();
       closeNotifModal();
       closeNewsModal();
+      closeLegalModal();
+      closeSourceModal();
     }
   });
 }
@@ -151,16 +287,20 @@ function initKeyboardShortcuts() {
  * Route / View Navigation
  */
 export function navigateTo(viewName, params = {}) {
-  state.currentView = viewName;
+  state.currentView = viewName === 'copyright' ? 'credits' : viewName;
   if (params.playerId) state.selectedPlayerId = params.playerId;
   if (params.clubId) state.selectedClubId = params.clubId;
   if (params.compareA) state.comparePlayerAId = params.compareA;
   if (params.compareB) state.comparePlayerBId = params.compareB;
+  if (params.tab) state.activeClubTab = params.tab;
+
+  // Sync hash
+  window.location.hash = state.currentView;
 
   // Update active states on nav items
   document.querySelectorAll('.nav-link, .drawer-link').forEach(link => {
     const target = link.getAttribute('data-view');
-    if (target === viewName) {
+    if (target === state.currentView) {
       link.classList.add('active');
     } else {
       link.classList.remove('active');
@@ -203,15 +343,25 @@ function renderCurrentView() {
       renderPlayerProfileView();
       break;
     case 'club-profile':
-      renderClubProfileView();
+      renderClubIntelligenceProfileView();
+      break;
+    case 'credits':
+    case 'copyright':
+      renderCreditsPageView();
       break;
     default:
       renderHomeView();
   }
+
+  // Update dynamic footer
+  const footerContainer = document.getElementById('globalFooterMount');
+  if (footerContainer) {
+    footerContainer.innerHTML = renderGlobalFooter();
+  }
 }
 
 /**
- * VIEW: HOME / DASHBOARD
+ * VIEW: HOME / BLUEGUN TRANSFER WAR ROOM
  */
 function renderHomeView() {
   const topTransfers = LIVE_TRANSFERS.slice(0, 4);
@@ -219,353 +369,414 @@ function renderHomeView() {
   const topTalents = PLAYERS.slice(0, 4);
 
   mainContentEl.innerHTML = `
-    <!-- Top Breaking Live Marquee -->
+    <!-- Top 2026 Live Transfer Marquee Ticker -->
     <div class="bl-ticker-wrapper">
-      <div class="ticker-badge">⚡ LIVE RADAR</div>
-      <div class="ticker-content-track">
-        <div class="ticker-item">BREAKING: Julián Álvarez €90M Formula Talks Accelerate With Barcelona</div>
-        <div class="ticker-item">CONFIRMED: Kylian Mbappé Presented at Bernabéu with Number 9</div>
-        <div class="ticker-item">BATTLE: Arsenal & Chelsea Submit Bids for Victor Osimhen</div>
-        <div class="ticker-item">SCOUTING: Florian Wirtz €150M 2025 War Chest Prepared</div>
+      <div class="ticker-badge">⚡ 2026 WAR ROOM WIRE</div>
+      <div class="ticker-content-track" id="heroTickerTrack">
+        ${LIVE_TRANSFERS.map(t => `
+          <span class="ticker-item">
+            <span class="pulse-dot"></span>
+            <strong>${t.playerName}</strong> (${t.fromClub} ➔ ${t.toClub}) // 
+            <span class="cyan">${t.reportedFee}</span> // 
+            <span class="gold">${t.status}</span>
+          </span>
+        `).join('')}
       </div>
     </div>
 
-    <!-- Hero Section -->
+    <!-- Hero Intelligence Section -->
     <section class="bl-hero-section">
       <div class="hero-bg-grid"></div>
-      <div class="hero-glow-orb"></div>
-      
+      <div class="hero-glow-orb cyan"></div>
+      <div class="hero-glow-orb blue"></div>
+
       <div class="hero-content">
-        <div class="hero-badge-tag">
-          <span class="pulse-icon"></span>
-          <span>INTELLIGENCE & SCOUTING SYSTEM 2.0</span>
+        <div class="hero-tag-badge">
+          <span class="pulse-dot"></span>
+          <span>BLUEGUN 2026 INTELLIGENCE ONLINE // AUDIT COMPLIANT</span>
         </div>
-        
-        <h1 class="hero-main-title">
-          THE TRANSFER MARKET<br>
-          <span class="hero-gradient-text">IS MOVING.</span>
+
+        <h1 class="hero-headline">
+          BLUEGUN TRANSFER WAR ROOM
+          <span class="hero-sub-glitch">"ENTER THE TRANSFER BATTLEFIELD."</span>
         </h1>
-        
-        <p class="hero-subtitle">
-          "ENTER THE TRANSFER BATTLEFIELD." Harness ruthless tactical analytics, valuation radars, and Blue Lock scouting algorithms across global football.
+
+        <p class="hero-lead">
+          Real-time tactical intelligence, algorithmic transfer probability, club injury dossiers, and 2026 European scouting analytics.
         </p>
 
-        <div class="hero-actions-row">
+        <!-- 7 Live-Style War Room Intelligence Cards -->
+        <div class="war-room-spotlight-grid">
+          
+          <!-- 1. Latest Transfers -->
+          <div class="spotlight-card" data-view="transfers">
+            <div class="sp-header">
+              <span class="sp-icon">🔄</span>
+              <span class="sp-title">LATEST TRANSFERS</span>
+            </div>
+            <div class="sp-main cyan">${LIVE_TRANSFERS[0].playerName}</div>
+            <div class="sp-sub">${LIVE_TRANSFERS[0].fromClub} ➔ ${LIVE_TRANSFERS[0].toClub}</div>
+            <div class="sp-badge">${LIVE_TRANSFERS[0].status} (${LIVE_TRANSFERS[0].reportedFee})</div>
+          </div>
+
+          <!-- 2. Biggest Transfer -->
+          <div class="spotlight-card" data-view="player-profile" data-player-id="florian-wirtz">
+            <div class="sp-header">
+              <span class="sp-icon">💎</span>
+              <span class="sp-title">BIGGEST TRANSFER</span>
+            </div>
+            <div class="sp-main gold">${DASHBOARD_STATS.biggestTransfer.player}</div>
+            <div class="sp-sub">${DASHBOARD_STATS.biggestTransfer.fee} (${DASHBOARD_STATS.biggestTransfer.club})</div>
+            <div class="sp-badge gold-badge">${DASHBOARD_STATS.biggestTransfer.status}</div>
+          </div>
+
+          <!-- 3. Biggest Rumour -->
+          <div class="spotlight-card" data-view="player-profile" data-player-id="alexander-isak">
+            <div class="sp-header">
+              <span class="sp-icon">🔥</span>
+              <span class="sp-title">BIGGEST RUMOUR</span>
+            </div>
+            <div class="sp-main red">${DASHBOARD_STATS.biggestRumour.player}</div>
+            <div class="sp-sub">${DASHBOARD_STATS.biggestRumour.fee} (${DASHBOARD_STATS.biggestRumour.club})</div>
+            <div class="sp-badge red-badge">${DASHBOARD_STATS.biggestRumour.status}</div>
+          </div>
+
+          <!-- 4. Most Wanted Player -->
+          <div class="spotlight-card" data-view="players">
+            <div class="sp-header">
+              <span class="sp-icon">🎯</span>
+              <span class="sp-title">MOST WANTED PLAYER</span>
+            </div>
+            <div class="sp-main cyan">Florian Wirtz</div>
+            <div class="sp-sub">Valuation: €140M (5 Elite Bids)</div>
+            <div class="sp-badge">Maximum Priority</div>
+          </div>
+
+          <!-- 5. Most Active Club -->
+          <div class="spotlight-card" data-view="club-profile" data-club-id="real-madrid">
+            <div class="sp-header">
+              <span class="sp-icon">🏰</span>
+              <span class="sp-title">MOST ACTIVE CLUB</span>
+            </div>
+            <div class="sp-main gold">${DASHBOARD_STATS.mostActiveClub.name}</div>
+            <div class="sp-sub">${DASHBOARD_STATS.mostActiveClub.spend} Outlay (7 Deals)</div>
+            <div class="sp-badge">${DASHBOARD_STATS.mostActiveClub.egoRank}</div>
+          </div>
+
+          <!-- 6. Biggest Market Value -->
+          <div class="spotlight-card" data-view="market">
+            <div class="sp-header">
+              <span class="sp-icon">👑</span>
+              <span class="sp-title">BIGGEST MARKET VALUE</span>
+            </div>
+            <div class="sp-main cyan">Mbappé / Haaland</div>
+            <div class="sp-sub">Peak Valuation: €180M</div>
+            <div class="sp-badge">World Record Benchmarks</div>
+          </div>
+
+          <!-- 7. Latest Negotiation -->
+          <div class="spotlight-card" data-view="player-profile" data-player-id="victor-osimhen">
+            <div class="sp-header">
+              <span class="sp-icon">⚡</span>
+              <span class="sp-title">LATEST NEGOTIATION</span>
+            </div>
+            <div class="sp-main neon">Victor Osimhen</div>
+            <div class="sp-sub">${DASHBOARD_STATS.latestNegotiation.club} (${DASHBOARD_STATS.latestNegotiation.fee})</div>
+            <div class="sp-badge neon-badge">${DASHBOARD_STATS.latestNegotiation.probability}% Probability</div>
+          </div>
+
+        </div>
+
+        <!-- Quick Battlefield Actions -->
+        <div class="hero-cta-group">
           <button class="bl-btn bl-btn-lg bl-btn-cyber" data-view="transfers">
-            <span>EXPLORE LIVE BATTLEFIELD</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            <span>EXPLORE 2026 LIVE TRANSFERS</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
-          <button class="bl-btn bl-btn-lg bl-btn-outline" data-view="compare">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
-            <span>EGO CLASH // COMPARE</span>
+          <button class="bl-btn bl-btn-lg bl-btn-outline" data-view="clubs">
+            <span>CLUB INTELLIGENCE</span>
+          </button>
+          <button class="bl-btn bl-btn-lg bl-btn-outline" data-view="credits">
+            <span>⚖️ COPYRIGHT & SOURCES</span>
           </button>
         </div>
       </div>
-
-      <!-- Hero Analytics HUD Cards -->
-      <div class="hero-stats-hud">
-        <div class="hud-stat-box">
-          <span class="hud-stat-lbl">ACTIVE RUMOURS</span>
-          <span class="hud-stat-val cyan count-up" data-target="${DASHBOARD_STATS.activeRumours}">${DASHBOARD_STATS.activeRumours}</span>
-          <span class="hud-stat-sub">Across Top 5 Leagues</span>
-        </div>
-
-        <div class="hud-stat-box">
-          <span class="hud-stat-lbl">CONFIRMED DEALS</span>
-          <span class="hud-stat-val gold count-up" data-target="${DASHBOARD_STATS.confirmedTransfers}">${DASHBOARD_STATS.confirmedTransfers}</span>
-          <span class="hud-stat-sub">Official Signings</span>
-        </div>
-
-        <div class="hud-stat-box">
-          <span class="hud-stat-lbl">BIGGEST DEAL</span>
-          <span class="hud-stat-val white font-sm">${DASHBOARD_STATS.biggestTransfer.player}</span>
-          <span class="hud-stat-sub cyan">${DASHBOARD_STATS.biggestTransfer.fee} → ${DASHBOARD_STATS.biggestTransfer.club}</span>
-        </div>
-
-        <div class="hud-stat-box">
-          <span class="hud-stat-lbl">MOST ACTIVE CLUB</span>
-          <span class="hud-stat-val gold font-sm">${DASHBOARD_STATS.mostActiveClub.name}</span>
-          <span class="hud-stat-sub">${DASHBOARD_STATS.mostActiveClub.deals} deals // ${DASHBOARD_STATS.mostActiveClub.spend}</span>
-        </div>
-      </div>
     </section>
 
-    <!-- Section: Live Transfer Feed Spotlight -->
-    <section class="bl-dashboard-section">
-      <div class="section-header-row">
-        <div>
-          <h2 class="bl-section-title">
-            <span class="title-bracket">[</span>
-            LIVE TRANSFER FEED // BREAKING RADAR
-            <span class="title-bracket">]</span>
-          </h2>
-          <p class="section-subtitle">Real-time negotiations, probability meters, and reported valuations.</p>
+    <!-- Hot Spotlights Grid -->
+    <div class="dashboard-grid-layout">
+      
+      <!-- Left: Top Transfer Movements -->
+      <div class="dash-column left">
+        <div class="section-title-wrap">
+          <div class="section-title-icon">🔵</div>
+          <h2 class="section-heading">2026 TRANSFER BATTLEFIELD MOVEMENTS</h2>
+          <button class="bl-btn bl-btn-xs bl-btn-outline" data-view="transfers">VIEW ALL (${LIVE_TRANSFERS.length})</button>
         </div>
-        <button class="bl-btn bl-btn-outline bl-btn-sm" data-view="transfers">
-          <span>VIEW ALL TRANSFERS (${LIVE_TRANSFERS.length})</span>
-        </button>
-      </div>
 
-      <div class="transfer-cards-grid">
-        ${topTransfers.map(tr => renderTransferCard(tr)).join('')}
-      </div>
-    </section>
-
-    <!-- Section: Featured Elite Talents -->
-    <section class="bl-dashboard-section">
-      <div class="section-header-row">
-        <div>
-          <h2 class="bl-section-title">
-            <span class="title-bracket">[</span>
-            SCOUTING HIGHLIGHTS // TOP VALUATIONS
-            <span class="title-bracket">]</span>
-          </h2>
-          <p class="section-subtitle">Tactical profiles, ego ratings, and statistical supremacy.</p>
+        <div class="transfers-cards-stack">
+          ${topTransfers.map(tr => renderTransferCard(tr)).join('')}
         </div>
-        <button class="bl-btn bl-btn-outline bl-btn-sm" data-view="players">
-          <span>ALL PLAYERS (${PLAYERS.length})</span>
-        </button>
       </div>
 
-      <div class="player-cards-grid">
-        ${topTalents.map(p => renderPlayerCard(p)).join('')}
-      </div>
-    </section>
-
-    <!-- Section: Transfer Wire News Highlights -->
-    <section class="bl-dashboard-section">
-      <div class="section-header-row">
-        <div>
-          <h2 class="bl-section-title">
-            <span class="title-bracket">[</span>
-            TRANSFER INTELLIGENCE WIRE
-            <span class="title-bracket">]</span>
-          </h2>
-          <p class="section-subtitle">Verified journalism and battlefield briefings.</p>
+      <!-- Right: Breaking Wire & Scouting Radar -->
+      <div class="dash-column right">
+        <div class="section-title-wrap">
+          <div class="section-title-icon">📰</div>
+          <h2 class="section-heading">TRANSFER INTELLIGENCE WIRE</h2>
+          <button class="bl-btn bl-btn-xs bl-btn-outline" data-view="news">ALL NEWS</button>
         </div>
-        <button class="bl-btn bl-btn-outline bl-btn-sm" data-view="news">
-          <span>VIEW ALL NEWS</span>
-        </button>
+
+        <div class="news-cards-stack">
+          ${hotNews.map(item => renderNewsCard(item)).join('')}
+        </div>
+
+        <!-- Featured Scouting Talents Mini Grid -->
+        <div class="section-title-wrap" style="margin-top: 32px;">
+          <div class="section-title-icon">⚡</div>
+          <h2 class="section-heading">BLUEGUN TOP EGO TARGETS</h2>
+          <button class="bl-btn bl-btn-xs bl-btn-outline" data-view="players">SCOUTING FILES</button>
+        </div>
+
+        <div class="top-talents-mini-grid">
+          ${topTalents.map(p => `
+            <div class="talent-mini-card" data-view="player-profile" data-player-id="${p.id}">
+              <img src="${p.image || p.photo}" alt="${p.name}" class="mini-avatar" onerror="this.onerror=null; this.src='${PLAYER_IMG_FALLBACK}';" />
+              <div class="mini-info">
+                <strong>${p.name}</strong>
+                <span>${p.currentClub} // ${p.position.split(' ')[0]}</span>
+              </div>
+              <div class="mini-ego gold">EGO ${p.egoRating}</div>
+            </div>
+          `).join('')}
+        </div>
       </div>
 
-      <div class="news-cards-grid">
-        ${hotNews.map(n => renderNewsCard(n)).join('')}
-      </div>
-    </section>
+    </div>
   `;
 }
 
 /**
- * VIEW: LIVE TRANSFER FEED
+ * VIEW: 2026 LIVE TRANSFERS FEED
  */
 function renderTransfersFeedView() {
-  const filtered = state.transferFilter === 'ALL'
-    ? LIVE_TRANSFERS
-    : LIVE_TRANSFERS.filter(t => t.status === state.transferFilter);
-
-  const filters = ['ALL', 'CONFIRMED', 'NEGOTIATING', 'RUMOUR', 'LOAN', 'FREE TRANSFER'];
+  let list = [...LIVE_TRANSFERS];
+  if (state.transferFilter !== 'ALL') {
+    list = list.filter(t => t.status === state.transferFilter);
+  }
 
   mainContentEl.innerHTML = `
-    <div class="feed-view-header">
-      <h1 class="bl-section-title">
-        <span class="title-bracket">[</span>
-        LIVE TRANSFER FEED
-        <span class="title-bracket">]</span>
-      </h1>
-      <p class="section-subtitle">Real-time scouting telemetry and negotiation confidence meters.</p>
+    <div class="view-header-strip">
+      <div>
+        <span class="sub-label">BLUEGUN RADAR DISPATCH</span>
+        <h1 class="main-title">2026 LIVE TRANSFERS & NEGOTIATIONS</h1>
+      </div>
       
       <!-- Filter Chips -->
-      <div class="filter-chips-row">
-        ${filters.map(f => `
-          <button class="bl-chip ${state.transferFilter === f ? 'active' : ''}" data-feed-filter="${f}">
-            ${f}
+      <div class="filter-chips-group">
+        ${['ALL', 'CONFIRMED', 'NEGOTIATING', 'INTERESTED', 'RUMOUR', 'MONITORING', 'COMPLETED', 'FREE TRANSFER'].map(status => `
+          <button class="filter-chip ${state.transferFilter === status ? 'active' : ''}" data-filter-status="${status}">
+            ${status}
           </button>
         `).join('')}
       </div>
     </div>
 
-    <div class="transfer-cards-grid">
-      ${filtered.length > 0 
-        ? filtered.map(tr => renderTransferCard(tr)).join('')
-        : `<div class="bl-empty-state"><p>No transfers matching filter '${state.transferFilter}'</p></div>`
-      }
+    <div class="transfers-masonry-grid">
+      ${list.length > 0 ? list.map(tr => renderTransferCard(tr)).join('') : '<p class="empty-state">No transfers match the selected filter criteria.</p>'}
     </div>
   `;
+
+  document.querySelectorAll('[data-filter-status]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      state.transferFilter = e.target.getAttribute('data-filter-status');
+      renderTransfersFeedView();
+    });
+  });
 }
 
 /**
- * VIEW: PLAYERS LIST
+ * VIEW: PLAYER SCOUTING FILES
  */
 function renderPlayersListView() {
   mainContentEl.innerHTML = `
-    <div class="feed-view-header">
-      <h1 class="bl-section-title">
-        <span class="title-bracket">[</span>
-        GLOBAL SCOUTING DATABASE // PLAYERS
-        <span class="title-bracket">]</span>
-      </h1>
-      <p class="section-subtitle">Inspect comprehensive ego ratings, season performance, and transfer valuations.</p>
+    <div class="view-header-strip">
+      <div>
+        <span class="sub-label">BLUEGUN DATABASE</span>
+        <h1 class="main-title">PLAYER SCOUTING FILES (${PLAYERS.length} ATHLETES)</h1>
+      </div>
+      <div class="search-bar-inline">
+        <input type="text" id="playerInlineSearch" class="bl-input" placeholder="Search player name, position, or club..." />
+      </div>
     </div>
 
-    <div class="player-cards-grid">
+    <div class="players-responsive-grid" id="playersGridMount">
       ${PLAYERS.map(p => renderPlayerCard(p)).join('')}
     </div>
   `;
+
+  const searchInput = document.getElementById('playerInlineSearch');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      const filtered = PLAYERS.filter(p => 
+        p.name.toLowerCase().includes(q) ||
+        p.currentClub.toLowerCase().includes(q) ||
+        p.position.toLowerCase().includes(q) ||
+        p.nationality.toLowerCase().includes(q)
+      );
+      const grid = document.getElementById('playersGridMount');
+      if (grid) {
+        grid.innerHTML = filtered.length > 0 
+          ? filtered.map(p => renderPlayerCard(p)).join('') 
+          : '<p class="empty-state">No scouting files match your query.</p>';
+      }
+    });
+  }
 }
 
 /**
- * VIEW: CLUBS LIST
+ * VIEW: CLUBS WAR ROOMS (Club Intelligence Index)
  */
 function renderClubsListView() {
   mainContentEl.innerHTML = `
-    <div class="feed-view-header">
-      <h1 class="bl-section-title">
-        <span class="title-bracket">[</span>
-        WAR ROOM // EUROPEAN POWERHOUSES
-        <span class="title-bracket">]</span>
-      </h1>
-      <p class="section-subtitle">Club transfer budgets, squad valuations, incoming and outgoing dossiers.</p>
+    <div class="view-header-strip">
+      <div>
+        <span class="sub-label">EUROPEAN CLUBS INTELLIGENCE</span>
+        <h1 class="main-title">CLUB INTELLIGENCE HUBS (${CLUBS.length} POWERHOUSES)</h1>
+      </div>
+      <div class="search-bar-inline">
+        <input type="text" id="clubInlineSearch" class="bl-input" placeholder="Search club name, league, or manager..." />
+      </div>
     </div>
 
-    <div class="club-cards-grid">
-      ${CLUBS.map(c => renderClubCard(c)).join('')}
+    <div class="clubs-grid-layout" id="clubsGridMount">
+      ${CLUBS.map(club => renderClubCard(club)).join('')}
     </div>
   `;
+
+  const searchInput = document.getElementById('clubInlineSearch');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      const filtered = CLUBS.filter(c => 
+        c.name.toLowerCase().includes(q) ||
+        c.league.toLowerCase().includes(q) ||
+        c.manager.toLowerCase().includes(q) ||
+        c.country.toLowerCase().includes(q)
+      );
+      const grid = document.getElementById('clubsGridMount');
+      if (grid) {
+        grid.innerHTML = filtered.length > 0 
+          ? filtered.map(c => renderClubCard(c)).join('') 
+          : '<p class="empty-state">No clubs match your query.</p>';
+      }
+    });
+  }
 }
 
 /**
- * VIEW: TRANSFER NEWS
+ * VIEW: CLUB INTELLIGENCE PROFILE
+ */
+function renderClubIntelligenceProfileView() {
+  const club = CLUBS.find(c => c.id === state.selectedClubId) || CLUBS[0];
+  mainContentEl.innerHTML = renderClubIntelligenceView(club, state.activeClubTab, state.clubSquadFilters);
+
+  // Attach tab switcher
+  const switchSelect = document.getElementById('switchClubSelect');
+  if (switchSelect) {
+    switchSelect.addEventListener('change', (e) => {
+      state.selectedClubId = e.target.value;
+      renderClubIntelligenceProfileView();
+    });
+  }
+
+  // Attach Squad Filters
+  const posFilter = document.getElementById('squadFilterPos');
+  if (posFilter) {
+    posFilter.addEventListener('change', (e) => {
+      state.clubSquadFilters.position = e.target.value;
+      renderClubIntelligenceProfileView();
+    });
+  }
+
+  const availFilter = document.getElementById('squadFilterAvail');
+  if (availFilter) {
+    availFilter.addEventListener('change', (e) => {
+      state.clubSquadFilters.availability = e.target.value;
+      renderClubIntelligenceProfileView();
+    });
+  }
+}
+
+/**
+ * VIEW: TRANSFER INTELLIGENCE (News)
  */
 function renderNewsView() {
-  const filtered = state.newsFilter === 'ALL'
-    ? TRANSFER_NEWS
-    : TRANSFER_NEWS.filter(n => n.category === state.newsFilter);
-
-  const categories = ['ALL', 'CONFIRMED', 'RUMOURS', 'NEGOTIATIONS', 'LOANS', 'FREE TRANSFERS'];
+  let list = [...TRANSFER_NEWS];
+  if (state.newsFilter !== 'ALL') {
+    list = list.filter(n => n.category === state.newsFilter);
+  }
 
   mainContentEl.innerHTML = `
-    <div class="feed-view-header">
-      <h1 class="bl-section-title">
-        <span class="title-bracket">[</span>
-        TRANSFER INTELLIGENCE WIRE // NEWS
-        <span class="title-bracket">]</span>
-      </h1>
-      <p class="section-subtitle">Confidential leaks, agent discussions, and official signing alerts.</p>
-      
-      <div class="filter-chips-row">
-        ${categories.map(c => `
-          <button class="bl-chip ${state.newsFilter === c ? 'active' : ''}" data-news-filter="${c}">
-            ${c}
+    <div class="view-header-strip">
+      <div>
+        <span class="sub-label">BLUEGUN INTELLIGENCE</span>
+        <h1 class="main-title">TRANSFER INTELLIGENCE & 2026 REPORTS</h1>
+      </div>
+
+      <div class="filter-chips-group">
+        ${['ALL', 'CONFIRMED', 'NEGOTIATIONS', 'RUMOURS', 'FREE TRANSFERS'].map(cat => `
+          <button class="filter-chip ${state.newsFilter === cat ? 'active' : ''}" data-news-filter="${cat}">
+            ${cat}
           </button>
         `).join('')}
       </div>
     </div>
 
-    <div class="news-cards-grid">
-      ${filtered.length > 0
-        ? filtered.map(n => renderNewsCard(n)).join('')
-        : `<div class="bl-empty-state"><p>No news found in category '${state.newsFilter}'</p></div>`
-      }
+    <div class="news-stream-grid">
+      ${list.map(item => renderNewsCard(item)).join('')}
     </div>
   `;
+
+  document.querySelectorAll('[data-news-filter]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      state.newsFilter = e.target.getAttribute('data-news-filter');
+      renderNewsView();
+    });
+  });
 }
 
 /**
- * VIEW: TRANSFER MARKET DATA TABLE
+ * VIEW: MARKET INTELLIGENCE MATRIX
  */
 function renderMarketTableView() {
   let list = [...PLAYERS];
-
-  // Filtering
-  if (state.marketPositionFilter !== 'ALL') {
-    list = list.filter(p => p.position.toLowerCase().includes(state.marketPositionFilter.toLowerCase()));
-  }
-  if (state.marketStatusFilter !== 'ALL') {
-    list = list.filter(p => p.transferStatus === state.marketStatusFilter);
-  }
-  if (state.marketSearchQuery.trim()) {
-    const q = state.marketSearchQuery.toLowerCase();
-    list = list.filter(p => p.name.toLowerCase().includes(q) || p.currentClub.toLowerCase().includes(q));
-  }
 
   // Sorting
   list.sort((a, b) => {
     let valA = a[state.marketSortKey];
     let valB = b[state.marketSortKey];
-
-    if (typeof valA === 'string') {
-      return state.marketSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    if (state.marketSortAsc) {
+      return valA > valB ? 1 : -1;
+    } else {
+      return valA < valB ? 1 : -1;
     }
-    return state.marketSortAsc ? valA - valB : valB - valA;
   });
 
   mainContentEl.innerHTML = `
-    <div class="market-view-header">
+    <div class="view-header-strip">
       <div>
-        <h1 class="bl-section-title">
-          <span class="title-bracket">[</span>
-          TRANSFER MARKET INTELLIGENCE MATRIX
-          <span class="title-bracket">]</span>
-        </h1>
-        <p class="section-subtitle">Interactive sortable and filterable transfer valuation database.</p>
-      </div>
-
-      <!-- Controls Row -->
-      <div class="market-filters-bar">
-        <div class="search-box">
-          <input type="text" id="marketTableSearch" class="bl-input" placeholder="Filter player or club..." value="${state.marketSearchQuery}" />
-        </div>
-
-        <div class="filter-select-wrap">
-          <select id="marketPosSelect" class="bl-select">
-            <option value="ALL" ${state.marketPositionFilter === 'ALL' ? 'selected' : ''}>All Positions</option>
-            <option value="Forward" ${state.marketPositionFilter === 'Forward' ? 'selected' : ''}>Forwards / Wingers</option>
-            <option value="Midfielder" ${state.marketPositionFilter === 'Midfielder' ? 'selected' : ''}>Midfielders</option>
-            <option value="Back" ${state.marketPositionFilter === 'Back' ? 'selected' : ''}>Defenders</option>
-          </select>
-        </div>
-
-        <div class="filter-select-wrap">
-          <select id="marketStatusSelect" class="bl-select">
-            <option value="ALL" ${state.marketStatusFilter === 'ALL' ? 'selected' : ''}>All Statuses</option>
-            <option value="CONFIRMED" ${state.marketStatusFilter === 'CONFIRMED' ? 'selected' : ''}>Confirmed</option>
-            <option value="NEGOTIATING" ${state.marketStatusFilter === 'NEGOTIATING' ? 'selected' : ''}>Negotiating</option>
-            <option value="RUMOUR" ${state.marketStatusFilter === 'RUMOUR' ? 'selected' : ''}>Rumour</option>
-          </select>
-        </div>
+        <span class="sub-label">FINANCIAL INTEL</span>
+        <h1 class="main-title">MARKET INTELLIGENCE MATRIX (2026)</h1>
       </div>
     </div>
 
     ${renderTransferMarketTable(list, state.marketSortKey, state.marketSortAsc)}
   `;
 
-  // Attach Table Specific Listeners
-  const searchInput = document.getElementById('marketTableSearch');
-  if (searchInput) {
-    searchInput.addEventListener('input', (e) => {
-      state.marketSearchQuery = e.target.value;
-      renderMarketTableView();
-    });
-  }
-
-  const posSelect = document.getElementById('marketPosSelect');
-  if (posSelect) {
-    posSelect.addEventListener('change', (e) => {
-      state.marketPositionFilter = e.target.value;
-      renderMarketTableView();
-    });
-  }
-
-  const statusSelect = document.getElementById('marketStatusSelect');
-  if (statusSelect) {
-    statusSelect.addEventListener('change', (e) => {
-      state.marketStatusFilter = e.target.value;
-      renderMarketTableView();
-    });
-  }
-
-  // Table Headers Sorting
-  document.querySelectorAll('.bl-market-datatable th[data-sort]').forEach(th => {
+  // Attach Table Header Sorting
+  document.querySelectorAll('.bl-table th.sortable').forEach(th => {
     th.addEventListener('click', () => {
       const key = th.getAttribute('data-sort');
       if (state.marketSortKey === key) {
@@ -580,30 +791,50 @@ function renderMarketTableView() {
 }
 
 /**
- * VIEW: PLAYER COMPARISON
+ * VIEW: EGO CLASH / COMPARE
  */
 function renderCompareView() {
-  const playerA = PLAYERS.find(p => p.id === state.comparePlayerAId) || PLAYERS[0];
-  const playerB = PLAYERS.find(p => p.id === state.comparePlayerBId) || PLAYERS[1];
+  const pA = PLAYERS.find(p => p.id === state.comparePlayerAId) || PLAYERS[0];
+  const pB = PLAYERS.find(p => p.id === state.comparePlayerBId) || PLAYERS[1];
 
-  mainContentEl.innerHTML = renderComparisonView(PLAYERS, playerA, playerB);
+  mainContentEl.innerHTML = `
+    <!-- Top Player Pickers Bar -->
+    <div class="compare-selector-bar bl-hud-panel">
+      <div class="picker-group">
+        <label>PLAYER A (CYAN)</label>
+        <select id="selectPlayerA" class="bl-select">
+          ${PLAYERS.map(p => `<option value="${p.id}" ${p.id === pA.id ? 'selected' : ''}>${p.name} (${p.currentClub})</option>`).join('')}
+        </select>
+      </div>
 
-  // Render SVG Radar Overlay
-  renderRadarChart('comparisonRadarMount', playerA, playerB);
+      <div class="vs-symbol-badge">VS</div>
 
-  // Attach Select Changes
-  const selectA = document.getElementById('selectPlayerA');
-  const selectB = document.getElementById('selectPlayerB');
+      <div class="picker-group">
+        <label>PLAYER B (RED)</label>
+        <select id="selectPlayerB" class="bl-select">
+          ${PLAYERS.map(p => `<option value="${p.id}" ${p.id === pB.id ? 'selected' : ''}>${p.name} (${p.currentClub})</option>`).join('')}
+        </select>
+      </div>
+    </div>
 
-  if (selectA) {
-    selectA.addEventListener('change', (e) => {
+    ${renderComparisonView(pA, pB)}
+  `;
+
+  setTimeout(() => {
+    renderRadarChart('comparisonRadarContainer', pA, pB);
+  }, 50);
+
+  const selA = document.getElementById('selectPlayerA');
+  const selB = document.getElementById('selectPlayerB');
+
+  if (selA) {
+    selA.addEventListener('change', (e) => {
       state.comparePlayerAId = e.target.value;
       renderCompareView();
     });
   }
-
-  if (selectB) {
-    selectB.addEventListener('change', (e) => {
+  if (selB) {
+    selB.addEventListener('change', (e) => {
       state.comparePlayerBId = e.target.value;
       renderCompareView();
     });
@@ -611,97 +842,124 @@ function renderCompareView() {
 }
 
 /**
- * VIEW: DETAILED PLAYER PROFILE
+ * VIEW: PLAYER SCOUTING FILE (Profile)
  */
 function renderPlayerProfileView() {
   const player = PLAYERS.find(p => p.id === state.selectedPlayerId) || PLAYERS[0];
   mainContentEl.innerHTML = renderPlayerProfile(player);
 
-  // Render Visual Charts
   setTimeout(() => {
-    renderRadarChart('playerProfileRadar', player);
-    renderMarketValueChart('playerValuationChart', player.valueHistory, player.marketValue);
+    renderRadarChart('playerRadarContainer', player);
+    renderMarketValueChart('playerValuationChart', player.valueHistory);
   }, 50);
 }
 
 /**
- * VIEW: DETAILED CLUB PROFILE
+ * VIEW: COPYRIGHT, CREDITS & SOURCES (/credits)
  */
-function renderClubProfileView() {
-  const club = CLUBS.find(c => c.id === state.selectedClubId) || CLUBS[0];
-  mainContentEl.innerHTML = renderClubProfile(club);
-}
+function renderCreditsPageView() {
+  mainContentEl.innerHTML = renderCreditsView(state.creditsFilter, state.creditsSearchQuery);
 
-/**
- * Global Delegated Clicks Handler
- */
-function handleGlobalClicks(e) {
-  // 1. View Player Detail
-  const viewPlayerBtn = e.target.closest('.btn-view-player, [data-player-id]');
-  if (viewPlayerBtn && !e.target.closest('button:not(.btn-view-player)')) {
-    const playerId = viewPlayerBtn.getAttribute('data-player-id');
-    if (playerId) {
-      navigateTo('player-profile', { playerId });
-      return;
-    }
-  }
-
-  // 2. View Club Detail
-  const viewClubBtn = e.target.closest('.btn-view-club, [data-club-id]');
-  if (viewClubBtn && !e.target.closest('button:not(.btn-view-club)')) {
-    const clubId = viewClubBtn.getAttribute('data-club-id');
-    if (clubId) {
-      navigateTo('club-profile', { clubId });
-      return;
-    }
-  }
-
-  // 3. Read News Modal
-  const readNewsBtn = e.target.closest('.btn-read-news, [data-news-id]');
-  if (readNewsBtn) {
-    const newsId = readNewsBtn.getAttribute('data-news-id');
-    openNewsModal(newsId);
-    return;
-  }
-
-  // 4. Quick Compare from Profile
-  const compareBtn = e.target.closest('.btn-quick-compare');
-  if (compareBtn) {
-    const pId = compareBtn.getAttribute('data-compare-id');
-    const otherPlayer = PLAYERS.find(p => p.id !== pId) || PLAYERS[0];
-    navigateTo('compare', { compareA: pId, compareB: otherPlayer.id });
-    return;
-  }
-
-  // 5. Back Navigation Buttons
-  if (e.target.closest('.btn-back-dashboard')) {
-    navigateTo('home');
-    return;
-  }
-  if (e.target.closest('.btn-back-clubs')) {
-    navigateTo('clubs');
-    return;
-  }
-
-  // 6. Feed Filters
-  const feedFilterBtn = e.target.closest('[data-feed-filter]');
-  if (feedFilterBtn) {
-    state.transferFilter = feedFilterBtn.getAttribute('data-feed-filter');
-    renderTransfersFeedView();
-    return;
-  }
-
-  // 7. News Filters
-  const newsFilterBtn = e.target.closest('[data-news-filter]');
-  if (newsFilterBtn) {
-    state.newsFilter = newsFilterBtn.getAttribute('data-news-filter');
-    renderNewsView();
-    return;
+  const searchInput = document.getElementById('creditsSearchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      state.creditsSearchQuery = e.target.value;
+      const listContainer = document.querySelector('.credits-sources-stream');
+      if (listContainer) {
+        // Re-render only the stream to avoid losing focus
+        const dummy = document.createElement('div');
+        dummy.innerHTML = renderCreditsView(state.creditsFilter, state.creditsSearchQuery);
+        const newStream = dummy.querySelector('.credits-sources-stream');
+        if (newStream) {
+          listContainer.innerHTML = newStream.innerHTML;
+        }
+      }
+    });
   }
 }
 
 /**
- * GLOBAL SEARCH SYSTEM
+ * Open Source Inspector Modal
+ */
+export function openSourceModal(sourceId) {
+  if (!sourceModal || !sourceModalBody) return;
+  sourceModalBody.innerHTML = renderSourceModalContent(sourceId);
+  sourceModal.classList.add('active');
+}
+
+export function closeSourceModal() {
+  if (sourceModal) sourceModal.classList.remove('active');
+}
+
+/**
+ * Helper: Open News Reader Modal
+ */
+export function openNewsModal(newsId) {
+  const item = TRANSFER_NEWS.find(n => n.id === newsId);
+  if (!item) return;
+
+  const modal = document.getElementById('newsModal');
+  const body = document.getElementById('newsModalBody');
+  if (!modal || !body) return;
+
+  const sourceUrl = item.sourceUrl || 'https://www.skysports.com/football/transfers';
+
+  body.innerHTML = `
+    <div class="news-modal-body-content">
+      <div class="news-modal-hero">
+        <img src="${item.image || 'assets/players/mbappe.jpg'}" alt="${item.title}" class="news-modal-img" onerror="this.onerror=null; this.src='${PLAYER_IMG_FALLBACK}';" />
+        <div class="news-category-tag">${item.category}</div>
+      </div>
+      <div class="news-modal-meta">
+        <span>Source: <strong>${item.source}</strong></span>
+        <span>⏱️ ${item.published} (${item.readTime})</span>
+      </div>
+      <h2 class="news-modal-title">${item.title}</h2>
+      <p class="news-modal-lead">${item.summary}</p>
+      <div class="news-modal-text">
+        <p>${item.content}</p>
+      </div>
+
+      <div class="news-modal-compliance-notice">
+        <p>* Editorial intelligence excerpt. Read the complete verified coverage on the original publication.</p>
+        <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer" class="bl-btn bl-btn-sm bl-btn-cyber">
+          <span>Read original report →</span>
+        </a>
+      </div>
+    </div>
+  `;
+
+  modal.classList.add('active');
+}
+
+export function closeNewsModal() {
+  const modal = document.getElementById('newsModal');
+  if (modal) modal.classList.remove('active');
+}
+
+/**
+ * Helper: Open Legal Policy Modal
+ */
+export function openLegalModal(type) {
+  if (!legalModal || !legalModalTitle || !legalModalBody) return;
+
+  if (type === 'privacy') {
+    legalModalTitle.textContent = 'BLUEGUN PRIVACY STATEMENT';
+    legalModalBody.innerHTML = getPrivacyPolicyHtml();
+  } else {
+    legalModalTitle.textContent = 'BLUEGUN TERMS OF USE';
+    legalModalBody.innerHTML = getTermsOfUseHtml();
+  }
+
+  legalModal.classList.add('active');
+}
+
+export function closeLegalModal() {
+  if (legalModal) legalModal.classList.remove('active');
+}
+
+/**
+ * Global Search Autocomplete
  */
 function openSearchModal() {
   if (globalSearchModal) {
@@ -716,110 +974,108 @@ function openSearchModal() {
 }
 
 function closeSearchModal() {
-  if (globalSearchModal) {
-    globalSearchModal.classList.remove('active');
-  }
+  if (globalSearchModal) globalSearchModal.classList.remove('active');
+}
+
+/**
+ * Normalize text for fuzzy/accent-insensitive search.
+ * Supports: Mbappé → mbappe, Ødegaard → odegaard, Leão → leao, Vinícius → vinicius
+ */
+function normalizeForSearch(text) {
+  if (!text) return '';
+  // Replace special Nordic characters before NFD decomposition
+  return text
+    .toLowerCase()
+    .replace(/ø/g, 'o').replace(/Ø/g, 'o')
+    .replace(/æ/g, 'ae').replace(/Æ/g, 'ae')
+    .replace(/ß/g, 'ss')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, ''); // Strip combining diacritics
 }
 
 function handleGlobalSearchInput() {
-  const query = (globalSearchInput ? globalSearchInput.value : '').trim().toLowerCase();
-  
-  if (!query) {
+  const rawQ = globalSearchInput ? globalSearchInput.value.trim() : '';
+  const q = normalizeForSearch(rawQ);
+  if (!globalSearchResults) return;
+
+  if (!q) {
     globalSearchResults.innerHTML = `
-      <div class="search-suggest-box">
-        <span class="suggest-title">POPULAR SCOUTING SEARCHES:</span>
-        <div class="suggest-tags">
-          <button class="suggest-tag-btn" onclick="document.getElementById('globalSearchInput').value='Mbappé'; document.getElementById('globalSearchInput').dispatchEvent(new Event('input'));">Kylian Mbappé</button>
-          <button class="suggest-tag-btn" onclick="document.getElementById('globalSearchInput').value='Barcelona'; document.getElementById('globalSearchInput').dispatchEvent(new Event('input'));">FC Barcelona</button>
-          <button class="suggest-tag-btn" onclick="document.getElementById('globalSearchInput').value='Alvarez'; document.getElementById('globalSearchInput').dispatchEvent(new Event('input'));">Julián Álvarez</button>
-          <button class="suggest-tag-btn" onclick="document.getElementById('globalSearchInput').value='Osimhen'; document.getElementById('globalSearchInput').dispatchEvent(new Event('input'));">Victor Osimhen</button>
-        </div>
+      <div class="search-hint-box">
+        <span>⚡ Quick shortcuts: Type player name (e.g. <em>Wirtz, Mbappe, Haaland, Odegaard</em>), club (<em>Real Madrid, Arsenal, Man City</em>), or status (<em>Confirmed</em>).</span>
       </div>
     `;
     return;
   }
 
-  const matchingPlayers = PLAYERS.filter(p => p.name.toLowerCase().includes(query) || p.currentClub.toLowerCase().includes(query) || p.nationality.toLowerCase().includes(query));
-  const matchingClubs = CLUBS.filter(c => c.name.toLowerCase().includes(query) || c.league.toLowerCase().includes(query) || c.country.toLowerCase().includes(query));
-  const matchingNews = TRANSFER_NEWS.filter(n => n.title.toLowerCase().includes(query) || n.player.toLowerCase().includes(query));
+  const matchedPlayers = PLAYERS.filter(p =>
+    normalizeForSearch(p.name).includes(q) ||
+    normalizeForSearch(p.currentClub).includes(q) ||
+    normalizeForSearch(p.position || '').includes(q) ||
+    normalizeForSearch(p.nationality || '').includes(q)
+  );
+  const matchedClubs = CLUBS.filter(c =>
+    normalizeForSearch(c.name).includes(q) ||
+    normalizeForSearch(c.league || '').includes(q) ||
+    normalizeForSearch(c.country || '').includes(q)
+  );
+  const matchedNews = TRANSFER_NEWS.filter(n =>
+    normalizeForSearch(n.title).includes(q) ||
+    normalizeForSearch(n.player || '').includes(q) ||
+    normalizeForSearch(n.summary || n.excerpt || '').includes(q)
+  );
 
-  let resultsHtml = '';
+  let html = '';
 
-  // Players
-  if (matchingPlayers.length > 0) {
-    resultsHtml += `
-      <div class="search-category-group">
-        <h4 class="category-header">PLAYERS (${matchingPlayers.length})</h4>
-        <div class="search-items-list">
-          ${matchingPlayers.map(p => `
-            <div class="search-result-item" data-player-id="${p.id}" onclick="window.bluelockApp.selectSearchResult('player', '${p.id}')">
-              <img src="${p.image || p.photo}" alt="${p.name}" class="result-thumb" onerror="this.onerror=null; this.src='${PLAYER_IMG_FALLBACK}';" />
-              <div class="result-info">
-                <strong class="result-name">${p.name}</strong>
-                <span class="result-sub">${p.currentClub} // ${p.position} // Valuation: <strong class="cyan">${p.marketValue}</strong></span>
-              </div>
-              <span class="result-ego-badge">EGO ${p.egoRating}</span>
-            </div>
-          `).join('')}
+  if (matchedClubs.length > 0) {
+    html += '<div class="search-category-title">CLUB INTELLIGENCE HUBS</div>';
+    html += matchedClubs.slice(0, 3).map(c => `
+      <div class="search-result-item" data-view="club-profile" data-club-id="${c.id}" onclick="window.bluegunApp.navigateTo('club-profile', { clubId: '${c.id}' }); window.bluegunApp.closeSearchModal();">
+        <img src="${c.badge}" class="res-thumb" onerror="this.onerror=null; this.src='${CLUB_IMG_FALLBACK}';" />
+        <div class="result-info">
+          <strong class="result-name">${c.name}</strong>
+          <span class="result-sub">${c.league} // ${c.country}</span>
+        </div>
+        <span class="gold font-mono">${c.squadValue}</span>
+      </div>
+    `).join('');
+  }
+
+  if (matchedPlayers.length > 0) {
+    html += '<div class="search-category-title">SCOUTING FILES</div>';
+    html += matchedPlayers.slice(0, 4).map(p => `
+      <div class="search-result-item" data-view="player-profile" data-player-id="${p.id}" onclick="window.bluegunApp.navigateTo('player-profile', { playerId: '${p.id}' }); window.bluegunApp.closeSearchModal();">
+        <img src="${p.image || p.photo}" class="res-thumb" onerror="this.onerror=null; this.src='${PLAYER_IMG_FALLBACK}';" />
+        <div class="result-info">
+          <strong class="result-name">${p.name}</strong>
+          <span class="result-sub">${p.currentClub} // ${p.position}</span>
+        </div>
+        <span class="cyan font-mono">${p.marketValue}</span>
+      </div>
+    `).join('');
+  }
+
+  if (matchedNews.length > 0) {
+    html += '<div class="search-category-title">TRANSFER INTELLIGENCE WIRE</div>';
+    html += matchedNews.slice(0, 3).map(n => `
+      <div class="search-result-item" onclick="window.bluegunApp.openNewsModal('${n.id}'); window.bluegunApp.closeSearchModal();">
+        <span class="res-icon">📰</span>
+        <div class="result-info">
+          <strong class="result-name">${n.title}</strong>
+          <span class="result-sub">${n.published} // Source: ${n.source}</span>
         </div>
       </div>
-    `;
+    `).join('');
   }
 
-  // Clubs
-  if (matchingClubs.length > 0) {
-    resultsHtml += `
-      <div class="search-category-group">
-        <h4 class="category-header">CLUBS (${matchingClubs.length})</h4>
-        <div class="search-items-list">
-          ${matchingClubs.map(c => `
-            <div class="search-result-item" data-club-id="${c.id}" onclick="window.bluelockApp.selectSearchResult('club', '${c.id}')">
-              <img src="${c.badge}" alt="${c.name}" class="result-thumb" onerror="this.onerror=null; this.src='${CLUB_IMG_FALLBACK}';" />
-              <div class="result-info">
-                <strong class="result-name">${c.name} ${c.flag}</strong>
-                <span class="result-sub">${c.league} // Budget: <strong class="gold">${c.transferBudget}</strong></span>
-              </div>
-              <span class="result-ego-badge">${c.egoRank}</span>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
+  if (!html) {
+    html = '<div class="search-hint-box"><span>No matching intelligence records found. Try another query.</span></div>';
   }
 
-  // News
-  if (matchingNews.length > 0) {
-    resultsHtml += `
-      <div class="search-category-group">
-        <h4 class="category-header">INTELLIGENCE WIRE (${matchingNews.length})</h4>
-        <div class="search-items-list">
-          ${matchingNews.map(n => `
-            <div class="search-result-item" onclick="window.bluelockApp.openNewsModal('${n.id}')">
-              <div class="result-info">
-                <strong class="result-name">${n.title}</strong>
-                <span class="result-sub">${n.published} // Focus: <strong class="cyan">${n.player}</strong></span>
-              </div>
-              ${getStatusBadge(n.status)}
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }
-
-  if (!matchingPlayers.length && !matchingClubs.length && !matchingNews.length) {
-    resultsHtml = `
-      <div class="bl-empty-state">
-        <p>No scouting intel matches found for "<strong>${query}</strong>"</p>
-      </div>
-    `;
-  }
-
-  globalSearchResults.innerHTML = resultsHtml;
+  globalSearchResults.innerHTML = html;
 }
 
 /**
- * Mobile Drawer
+ * Mobile Drawer & Notifications
  */
 function toggleMobileDrawer() {
   if (mobileNavDrawer) mobileNavDrawer.classList.toggle('active');
@@ -827,10 +1083,6 @@ function toggleMobileDrawer() {
 function closeMobileDrawer() {
   if (mobileNavDrawer) mobileNavDrawer.classList.remove('active');
 }
-
-/**
- * Notifications Modal
- */
 function toggleNotifModal() {
   if (notifModal) notifModal.classList.toggle('active');
 }
@@ -838,74 +1090,20 @@ function closeNotifModal() {
   if (notifModal) notifModal.classList.remove('active');
 }
 
-/**
- * News Article Reader Modal
- */
-function openNewsModal(newsId) {
-  const article = TRANSFER_NEWS.find(n => n.id === newsId) || TRANSFER_NEWS[0];
-  const modalEl = document.getElementById('newsModal');
-  const modalBody = document.getElementById('newsModalBody');
-
-  if (modalEl && modalBody) {
-    modalBody.innerHTML = `
-      <div class="news-modal-content">
-        <div class="news-modal-img-wrap">
-          <img src="${article.image}" alt="${article.title}" class="news-modal-banner" />
-          <div class="news-modal-badge">${article.category}</div>
-        </div>
-
-        <div class="news-modal-header">
-          <div class="news-meta-line">
-            <span class="source-tag">${article.source}</span>
-            <span class="time-tag">${article.published}</span>
-            <span class="impact-tag cyan">${article.egoImpact}</span>
-          </div>
-          <h2 class="modal-news-title">${article.title}</h2>
-        </div>
-
-        <div class="modal-news-body">
-          <p class="lead-paragraph">${article.summary}</p>
-          <div class="full-content-text">${article.content}</div>
-        </div>
-
-        <div class="modal-news-footer">
-          <div class="related-tags">
-            <span class="tag-label">INVOLVED CLUBS:</span>
-            ${article.clubs.map(c => `<span class="club-chip">${c}</span>`).join('')}
-          </div>
-          <button class="bl-btn bl-btn-cyber bl-btn-sm" onclick="window.bluelockApp.navigateTo('player-profile', { playerId: '${article.playerId}' }); window.bluelockApp.closeNewsModal();">
-            <span>INSPECT ${article.player.toUpperCase()}</span>
-          </button>
-        </div>
-      </div>
-    `;
-    modalEl.classList.add('active');
-  }
-}
-
-function closeNewsModal() {
-  const modalEl = document.getElementById('newsModal');
-  if (modalEl) modalEl.classList.remove('active');
-}
-
-/**
- * Hero Ticker Auto-scroll
- */
 function startHeroTicker() {
-  // Visual subtle ticker animations are controlled via CSS keyframes
+  // CSS Keyframe smooth marquee
 }
 
-// Expose app handlers to window for inline HTML onclick helpers
-window.bluelockApp = {
+// Global namespace exposure
+window.bluegunApp = {
   navigateTo,
-  selectSearchResult: (type, id) => {
-    closeSearchModal();
-    if (type === 'player') navigateTo('player-profile', { playerId: id });
-    if (type === 'club') navigateTo('club-profile', { clubId: id });
-  },
-  openNewsModal: (id) => {
-    closeSearchModal();
-    openNewsModal(id);
-  },
-  closeNewsModal
+  openNewsModal,
+  closeNewsModal,
+  openSearchModal,
+  closeSearchModal,
+  openLegalModal,
+  closeLegalModal,
+  openSourceModal,
+  closeSourceModal
 };
+window.bluelockApp = window.bluegunApp; // Backwards compatibility

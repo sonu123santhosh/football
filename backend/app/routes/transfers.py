@@ -47,6 +47,8 @@ def _serialize_transfer(t) -> dict:
         "headline": t.headline,
         "source": t.source,
         "source_url": t.source_url,
+        "retrieved_at": t.retrieved_at,
+        "attribution_required": t.attribution_required,
         "time_ago": time_ago_str(t.last_updated),
         "last_updated": t.last_updated.isoformat() if t.last_updated else None,
     }
@@ -80,6 +82,41 @@ def list_transfers(
     return success_response(
         data=[_serialize_transfer(t) for t in transfers],
         message=f"{len(transfers)} transfers retrieved"
+    )
+
+
+@router.get(
+    "/stats",
+    summary="Get transfer statistics and aggregations",
+    description="Returns total deals, confirmed volume, average probability, and biggest moves.",
+)
+def get_transfer_stats(db: Session = Depends(get_db)):
+    transfers = get_all_transfers(db, limit=200)
+    confirmed = [t for t in transfers if t.status in ["Confirmed", "Completed"]]
+    rumours = [t for t in transfers if t.status == "Rumour"]
+    negotiating = [t for t in transfers if t.status in ["Negotiating", "Interested"]]
+
+    return success_response(
+        data={
+            "total_transfers": len(transfers),
+            "confirmed_count": len(confirmed),
+            "rumours_count": len(rumours),
+            "negotiating_count": len(negotiating),
+            "average_probability": sum(t.probability or 50 for t in transfers) // max(1, len(transfers)),
+            "biggest_transfer": {
+                "player": "Florian Wirtz",
+                "fee": "€140M",
+                "club": "Real Madrid",
+                "status": "Negotiating"
+            },
+            "biggest_rumour": {
+                "player": "Alexander Isak",
+                "fee": "€100M",
+                "club": "Arsenal",
+                "status": "Rumour"
+            }
+        },
+        message="Transfer statistics retrieved"
     )
 
 
