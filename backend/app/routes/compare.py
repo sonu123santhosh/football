@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.services.player_service import get_player_by_id
+from app.services.player_service import resolve_player
 from app.utils.helpers import not_found, success_response, bad_request
 
 router = APIRouter(prefix="/api/compare", tags=["Comparison"])
@@ -46,13 +46,13 @@ def compare_players(
     if p1_id == p2_id:
         raise bad_request("Cannot compare a player with themselves. Provide two different player IDs.")
 
-    p1 = get_player_by_id(db, p1_id)
-    p2 = get_player_by_id(db, p2_id)
+    p1 = resolve_player(db, p1_id)
+    p2 = resolve_player(db, p2_id)
 
     if not p1:
-        raise not_found("Player", player1)
+        raise not_found("Player", p1_id)
     if not p2:
-        raise not_found("Player", player2)
+        raise not_found("Player", p2_id)
 
     def player_snapshot(p):
         return {

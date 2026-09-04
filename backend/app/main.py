@@ -1,4 +1,4 @@
-﻿"""
+"""
 BLUEGUN — FastAPI Backend
 Main application entry point.
 """
@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 load_dotenv()
@@ -118,28 +119,48 @@ app.include_router(search_router)
 app.include_router(compare_router)
 
 
-# Global exception handler
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    detail = exc.detail
+    if isinstance(detail, dict):
+        return JSONResponse(status_code=exc.status_code, content=detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"success": False, "error": str(detail)},
+    )
+
+
+# Global exception handler (does not swallow HTTPException)
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    if isinstance(exc, StarletteHTTPException):
+        return await http_exception_handler(request, exc)
     logger.error(f"Unhandled exception on {request.url}: {exc}")
     return JSONResponse(
         status_code=500,
-        content={"success": False, "error": "Internal server error", "details": str(exc)},
+        content={"success": False, "error": "Internal server error"},
     )
 
 
-@app.exception_handler(404)
-async def not_found_handler(request: Request, exc):
-    return JSONResponse(
-        status_code=404,
-        content={"success": False, "error": "Resource not found"},
-    )
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse
 
+# Root directory of web project
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
-@app.get("/", tags=["Health"])
+# Serve static assets for standalone frontend hosting
+if os.path.exists(os.path.join(PROJECT_ROOT, "css")):
+    app.mount("/css", StaticFiles(directory=os.path.join(PROJECT_ROOT, "css")), name="css")
+if os.path.exists(os.path.join(PROJECT_ROOT, "js")):
+    app.mount("/js", StaticFiles(directory=os.path.join(PROJECT_ROOT, "js")), name="js")
+if os.path.exists(os.path.join(PROJECT_ROOT, "assets")):
+    app.mount("/assets", StaticFiles(directory=os.path.join(PROJECT_ROOT, "assets")), name="assets")
+if os.path.exists(os.path.join(PROJECT_ROOT, "data")):
+    app.mount("/data", StaticFiles(directory=os.path.join(PROJECT_ROOT, "data")), name="data")
+
 @app.get("/health", tags=["Health"])
 @app.get("/api/health", tags=["Health"])
-def root():
+def health_check():
     """Health check & API info."""
     return {
         "success": True,
@@ -157,6 +178,16 @@ def root():
         },
         "external_apis": get_api_status(),
     }
+
+@app.get("/", tags=["App"])
+@app.get("/app", tags=["App"])
+def serve_app_or_root(request: Request):
+    """Serves frontend index.html for browsers, or API info for JSON clients."""
+    accept = request.headers.get("accept", "")
+    index_file = os.path.join(PROJECT_ROOT, "index.html")
+    if ("text/html" in accept or request.url.path == "/app") and os.path.exists(index_file):
+        return FileResponse(index_file)
+    return health_check()
 
 
 @app.get("/api/status", tags=["Health"])

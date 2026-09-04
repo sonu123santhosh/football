@@ -9,10 +9,10 @@ import { DATA_SOURCES, THIRD_PARTY_ASSETS, COMPLIANCE_DISCLAIMERS, PLAYERS, CLUB
 import { SOURCES_REGISTRY, AUDIT_METADATA, getSourceById, getOriginalWorkSources, getThirdPartySources, getUnverifiedSources, getSourcesCount } from './sources.js';
 
 // Global SVG Fallback for Player Images
-export const PLAYER_IMG_FALLBACK = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23050a18'/><circle cx='50' cy='38' r='20' fill='%2300f0ff' opacity='0.35'/><path d='M15 92 Q50 58 85 92' fill='%2300f0ff' opacity='0.35'/><text x='50' y='96' font-family='sans-serif' font-weight='bold' font-size='7' fill='%2300f0ff' text-anchor='middle'>BLUEGUN INTEL</text></svg>`;
+export const PLAYER_IMG_FALLBACK = `data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23050a18%22/><circle cx=%2250%22 cy=%2238%22 r=%2220%22 fill=%22%2300f0ff%22 opacity=%220.35%22/><path d=%22M15 92 Q50 58 85 92%22 fill=%22%2300f0ff%22 opacity=%220.35%22/><text x=%2250%22 y=%2296%22 font-family=%22sans-serif%22 font-weight=%22bold%22 font-size=%227%22 fill=%22%2300f0ff%22 text-anchor=%22middle%22>BLUEGUN INTEL</text></svg>`;
 
 // Global SVG Fallback for Club Badges
-export const CLUB_IMG_FALLBACK = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,5 95,25 95,75 50,95 5,75 5,25' fill='%230b1325' stroke='%2300f0ff' stroke-width='3'/><circle cx='50' cy='50' r='20' fill='%230077ff' opacity='0.5'/></svg>`;
+export const CLUB_IMG_FALLBACK = `data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><polygon points=%2250,5 95,25 95,75 50,95 5,75 5,25%22 fill=%22%230b1325%22 stroke=%22%2300f0ff%22 stroke-width=%223%22/><circle cx=%2250%22 cy=%2250%22 r=%2220%22 fill=%22%230077ff%22 opacity=%220.5%22/></svg>`;
 
 /**
  * Micro Source Trigger Button Helper
@@ -109,7 +109,7 @@ export function renderTransferCard(tr) {
 
         <!-- Transfer Battle Flow HUD -->
         <div class="club-transfer-flow">
-          <div class="club-node" data-view="club-profile" data-club-id="${tr.fromClubId || ''}">
+          <div class="club-node" ${tr.fromClubId ? `data-view="club-profile" data-club-id="${tr.fromClubId}"` : ''}>
             <img src="${tr.fromBadge}" alt="${tr.fromClub}" class="club-logo-sm" onerror="this.onerror=null; this.src='${CLUB_IMG_FALLBACK}';" />
             <span class="club-label">${tr.fromClub}</span>
           </div>
@@ -120,7 +120,7 @@ export function renderTransferCard(tr) {
             <span class="prob-tag" title="BLUEGUN Algorithmic Probability Estimate">${tr.probability}% PROB.</span>
           </div>
 
-          <div class="club-node highlight" data-view="club-profile" data-club-id="${tr.toClubId || ''}">
+          <div class="club-node highlight" ${tr.toClubId ? `data-view="club-profile" data-club-id="${tr.toClubId}"` : ''}>
             <img src="${tr.toBadge}" alt="${tr.toClub}" class="club-logo-sm" onerror="this.onerror=null; this.src='${CLUB_IMG_FALLBACK}';" />
             <span class="club-label">${tr.toClub}</span>
           </div>
@@ -420,7 +420,7 @@ export function renderPlayerProfile(p) {
                 </div>
                 <h1 class="player-big-name">${p.name}</h1>
                 <div class="player-club-position">
-                  <span class="current-club-badge" data-view="club-profile" data-club-id="${p.currentClubId}">${p.currentClub}</span>
+                  <span class="current-club-badge"${p.currentClubId ? ` data-view="club-profile" data-club-id="${p.currentClubId}"` : ''}>${p.currentClub}</span>
                   <span class="position-tag">${p.position}</span>
                   <span class="age-tag">AGE ${p.age}</span>
                   ${getAvailabilityBadge(p.availability || 'AVAILABLE')}
@@ -470,7 +470,7 @@ export function renderPlayerProfile(p) {
           </div>
 
           <div class="battle-flow-container">
-            <div class="battle-club-node from" data-view="club-profile" data-club-id="${p.currentClubId}">
+            <div class="battle-club-node from"${p.currentClubId ? ` data-view="club-profile" data-club-id="${p.currentClubId}"` : ''}>
               <span class="node-status">CURRENT CLUB</span>
               <strong class="node-name">${p.currentClub}</strong>
             </div>
@@ -1975,6 +1975,14 @@ export function renderCreditsView(categoryFilter = 'ALL', searchQuery = '') {
             BLUEGUN is an independent project. It is not affiliated with any football club, player, league, governing body, or the Blue Lock franchise. All analytical metrics are project features only and not official football assessments.
           </p>
           <div class="final-audit-badge">
+            <span class="pulse-dot"></span>
+            <span>AUDIT COMPLIANT // 2026 TRANSFER INTELLIGENCE ENGINE</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  `;
+}
 
 /**
  * Backward compatibility alias for renderCopyrightAndAttributionView

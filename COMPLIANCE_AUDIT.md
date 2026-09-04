@@ -1,6 +1,6 @@
 # Production Compliance & Attribution Audit Checklist
 
-This audit document verifies the intellectual property posture, attribution integrity, and third-party content handling for **BLUELOCK // TRANSFER IQ**.
+This audit document verifies the intellectual property posture, attribution integrity, and third-party content handling for **BLUEGUN**.
 
 ---
 
@@ -8,7 +8,7 @@ This audit document verifies the intellectual property posture, attribution inte
 
 | Category | Component / Asset | Permission & License Status | Attribution Location | Compliance Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **Original Work** | Frontend Code, Layout, CSS Grid, SVG Radar Engine | Copyright © 2026 BLUELOCK // TRANSFER IQ | Global Footer, Copyright View | ✅ **COMPLIANT** |
+| **Original Work** | Frontend Code, Layout, CSS Grid, SVG Radar Engine | Copyright © 2026 BLUEGUN | Global Footer, Copyright View | ✅ **COMPLIANT** |
 | **Original Analysis** | Ego Rating, Transfer Probability Score, Market Threat Index | Proprietary Mathematical Models | Stat Badges ("⚡ Proprietary Analysis") | ✅ **COMPLIANT** |
 | **Player Photographs** | 20 Real Player Action & Portrait Images | CC BY-SA 4.0 / CC BY 3.0 / Wikimedia Commons | Player Cards (hover badge), Profile Modal | ✅ **COMPLIANT** |
 | **Club Badges** | Club Crests & Identity Badges | Third-Party Trademarks (Fair Use Identification) | Club War Rooms, Global Disclaimer | ✅ **COMPLIANT** |

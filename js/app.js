@@ -56,7 +56,8 @@ const state = {
   marketSortAsc: false,
   marketPositionFilter: 'ALL',
   marketStatusFilter: 'ALL',
-  globalSearchQuery: ''
+  globalSearchQuery: '',
+  _ignoreHashChange: false
 };
 
 // DOM Cache
@@ -82,15 +83,16 @@ document.addEventListener('DOMContentLoaded', () => {
   initDomElements();
   initEventListeners();
   initKeyboardShortcuts();
-  
-  // Handle URL Hash if present
-  const hash = window.location.hash.replace('#', '');
-  if (hash === 'credits' || hash === 'copyright' || hash === 'sources') {
-    state.currentView = 'credits';
-  } else if (hash && ['transfers', 'players', 'clubs', 'news', 'market', 'compare'].includes(hash)) {
-    state.currentView = hash;
-  }
-  
+  applyLocationHash();
+  window.addEventListener('hashchange', () => {
+    if (state._ignoreHashChange) {
+      state._ignoreHashChange = false;
+      return;
+    }
+    applyLocationHash();
+    renderCurrentView();
+  });
+
   renderCurrentView();
   startHeroTicker();
 });
@@ -135,6 +137,12 @@ function initEventListeners() {
       const view = viewBtn.getAttribute('data-view');
       const pId = viewBtn.getAttribute('data-player-id');
       const cId = viewBtn.getAttribute('data-club-id');
+      if (view === 'club-profile' && (!cId || !CLUBS.some(c => c.id === cId))) {
+        return;
+      }
+      if (view === 'player-profile' && pId && !PLAYERS.some(p => p.id === pId)) {
+        return;
+      }
       navigateTo(view === 'copyright' ? 'credits' : view, { playerId: pId, clubId: cId });
       closeMobileDrawer();
       return;
@@ -294,21 +302,57 @@ export function navigateTo(viewName, params = {}) {
   if (params.compareB) state.comparePlayerBId = params.compareB;
   if (params.tab) state.activeClubTab = params.tab;
 
-  // Sync hash
-  window.location.hash = state.currentView;
-
-  // Update active states on nav items
-  document.querySelectorAll('.nav-link, .drawer-link').forEach(link => {
-    const target = link.getAttribute('data-view');
-    if (target === state.currentView) {
-      link.classList.add('active');
-    } else {
-      link.classList.remove('active');
-    }
-  });
+  syncLocationHash();
+  updateActiveNav();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
   renderCurrentView();
+}
+
+function applyLocationHash() {
+  const raw = (window.location.hash || '').replace(/^#/, '');
+  const [viewPart, idPart] = raw.split('/');
+  const view = viewPart || 'home';
+
+  if (view === 'credits' || view === 'copyright' || view === 'sources') {
+    state.currentView = 'credits';
+  } else if (view === 'player-profile') {
+    state.currentView = 'player-profile';
+    if (idPart) state.selectedPlayerId = idPart;
+  } else if (view === 'club-profile') {
+    state.currentView = 'club-profile';
+    if (idPart) state.selectedClubId = idPart;
+  } else if (['home', 'transfers', 'players', 'clubs', 'news', 'market', 'compare'].includes(view)) {
+    state.currentView = view;
+  }
+  updateActiveNav();
+}
+
+function syncLocationHash() {
+  let next = state.currentView;
+  if (state.currentView === 'credits') next = 'copyright';
+  if (state.currentView === 'player-profile' && state.selectedPlayerId) {
+    next = `player-profile/${state.selectedPlayerId}`;
+  }
+  if (state.currentView === 'club-profile' && state.selectedClubId) {
+    next = `club-profile/${state.selectedClubId}`;
+  }
+  const desired = '#' + next;
+  if (window.location.hash !== desired) {
+    state._ignoreHashChange = true;
+    window.location.hash = next;
+  }
+}
+
+function updateActiveNav() {
+  document.querySelectorAll('.nav-link, .drawer-link').forEach(link => {
+    const target = link.getAttribute('data-view');
+    const isCredits = state.currentView === 'credits';
+    const match = target === state.currentView
+      || (isCredits && (target === 'copyright' || target === 'credits' || target === 'sources'))
+      || (state.currentView === 'home' && target === 'home');
+    link.classList.toggle('active', Boolean(match));
+  });
 }
 
 /**
@@ -589,7 +633,7 @@ function renderTransfersFeedView() {
 
   document.querySelectorAll('[data-filter-status]').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      state.transferFilter = e.target.getAttribute('data-filter-status');
+      state.transferFilter = e.currentTarget.getAttribute('data-filter-status');
       renderTransfersFeedView();
     });
   });
@@ -618,12 +662,12 @@ function renderPlayersListView() {
   const searchInput = document.getElementById('playerInlineSearch');
   if (searchInput) {
     searchInput.addEventListener('input', (e) => {
-      const q = e.target.value.toLowerCase().trim();
-      const filtered = PLAYERS.filter(p => 
-        p.name.toLowerCase().includes(q) ||
-        p.currentClub.toLowerCase().includes(q) ||
-        p.position.toLowerCase().includes(q) ||
-        p.nationality.toLowerCase().includes(q)
+      const q = normalizeForSearch(e.target.value.trim());
+      const filtered = PLAYERS.filter(p =>
+        normalizeForSearch(p.name).includes(q) ||
+        normalizeForSearch(p.currentClub).includes(q) ||
+        normalizeForSearch(p.position).includes(q) ||
+        normalizeForSearch(p.nationality).includes(q)
       );
       const grid = document.getElementById('playersGridMount');
       if (grid) {
@@ -741,7 +785,7 @@ function renderNewsView() {
 
   document.querySelectorAll('[data-news-filter]').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      state.newsFilter = e.target.getAttribute('data-news-filter');
+      state.newsFilter = e.currentTarget.getAttribute('data-news-filter');
       renderNewsView();
     });
   });
