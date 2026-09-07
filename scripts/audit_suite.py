@@ -16,15 +16,27 @@ if sys.platform == "win32":
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-WORKSPACE = r"c:\Users\LENOVO\Desktop\web"
-sys.path.insert(0, os.path.join(WORKSPACE, "backend"))
+WORKSPACE = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+BACKEND_DIR = os.path.join(WORKSPACE, "backend")
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+if WORKSPACE not in sys.path:
+    sys.path.insert(0, WORKSPACE)
 
-from app.main import app
-from app.database import SessionLocal
-from app.models.club import Club
-from app.models.player import Player
-from app.models.transfer import Transfer
-from app.models.news import TransferNews
+try:
+    from app.main import app
+    from app.database import SessionLocal
+    from app.models.club import Club
+    from app.models.player import Player
+    from app.models.transfer import Transfer
+    from app.models.news import TransferNews
+except ImportError:
+    from backend.app.main import app
+    from backend.app.database import SessionLocal
+    from backend.app.models.club import Club
+    from backend.app.models.player import Player
+    from backend.app.models.transfer import Transfer
+    from backend.app.models.news import TransferNews
 
 client = TestClient(app)
 

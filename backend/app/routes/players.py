@@ -16,9 +16,9 @@ from app.models.club import Club
 from app.models.transfer import Transfer as TransferModel
 from app.services.player_service import (
     get_all_players,
-    get_player_by_id,
     get_player_transfers,
     get_player_market_history,
+    resolve_player,
 )
 from app.utils.helpers import not_found, success_response, time_ago_str
 
@@ -130,7 +130,7 @@ def list_players(
     description="Returns full scouting profile, radar, valuations, and market history.",
 )
 def get_player(player_id: int, db: Session = Depends(get_db)):
-    player = get_player_by_id(db, player_id)
+    player = resolve_player(db, player_id)
     if not player:
         raise not_found("Player", player_id)
     return success_response(
@@ -145,7 +145,7 @@ def get_player(player_id: int, db: Session = Depends(get_db)):
     description="Returns performance statistics for the current season.",
 )
 def get_player_stats(player_id: int, db: Session = Depends(get_db)):
-    player = get_player_by_id(db, player_id)
+    player = resolve_player(db, player_id)
     if not player:
         raise not_found("Player", player_id)
     return success_response(
@@ -175,7 +175,7 @@ def get_player_stats(player_id: int, db: Session = Depends(get_db)):
     description="Returns all current and past transfer records for this player.",
 )
 def get_player_transfers_route(player_id: int, db: Session = Depends(get_db)):
-    player = get_player_by_id(db, player_id)
+    player = resolve_player(db, player_id)
     if not player:
         raise not_found("Player", player_id)
     transfers = get_player_transfers(db, player_id)
@@ -206,7 +206,7 @@ def get_player_transfers_route(player_id: int, db: Session = Depends(get_db)):
     description="Returns chronological valuation data for line chart rendering.",
 )
 def get_market_history(player_id: int, db: Session = Depends(get_db)):
-    player = get_player_by_id(db, player_id)
+    player = resolve_player(db, player_id)
     if not player:
         raise not_found("Player", player_id)
     history = get_player_market_history(db, player_id)
@@ -222,9 +222,9 @@ def get_market_history(player_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{player_id}/injury", summary="Get player current injury status")
 def get_player_injury(player_id: str, db: Session = Depends(get_db)):
-    player = get_player_by_id(db, int(player_id) if player_id.isdigit() else player_id)
+    player = resolve_player(db, player_id)
     if not player:
-        not_found("Player", player_id)
+        raise not_found("Player", player_id)
 
     # Check if injured
     is_injured = player.slug in ["eduardo-camavinga", "gavi", "martin-odegaard", "rodri"]
@@ -241,6 +241,18 @@ def get_player_injury(player_id: str, db: Session = Depends(get_db)):
             "expected_return": "2026-09-02", "days_unavailable": 13, "status": "Minor Injury",
             "source": "Manchester City Medical Bulletin", "last_updated": "2026-08-25T11:30:00Z"
         }
+    elif player.slug == "gavi":
+        injury_record = {
+            "injury": "Knee Cartilage Recovery", "body_area": "Right Knee", "date_injured": "2026-08-05",
+            "expected_return": "2026-09-15", "days_unavailable": 41, "status": "Injured (Physiotherapy)",
+            "source": "FC Barcelona Medical Services", "last_updated": "2026-08-25T12:00:00Z"
+        }
+    elif player.slug == "martin-odegaard":
+        injury_record = {
+            "injury": "Ankle Ligament Damage", "body_area": "Left Ankle", "date_injured": "2026-08-16",
+            "expected_return": "2026-09-20", "days_unavailable": 35, "status": "Injured (Rehabilitation)",
+            "source": "Arsenal Medical Briefing", "last_updated": "2026-08-25T11:00:00Z"
+        }
 
     return success_response({
         "player_id": player.id,
@@ -252,9 +264,9 @@ def get_player_injury(player_id: str, db: Session = Depends(get_db)):
 
 @router.get("/{player_id}/suspension", summary="Get player disciplinary & suspension status")
 def get_player_suspension(player_id: str, db: Session = Depends(get_db)):
-    player = get_player_by_id(db, int(player_id) if player_id.isdigit() else player_id)
+    player = resolve_player(db, player_id)
     if not player:
-        not_found("Player", player_id)
+        raise not_found("Player", player_id)
 
     is_suspended = player.slug in ["antonio-rudiger", "william-saliba"]
     susp_record = None
@@ -281,9 +293,9 @@ def get_player_suspension(player_id: str, db: Session = Depends(get_db)):
 
 @router.get("/{player_id}/availability", summary="Get player availability status")
 def get_player_availability(player_id: str, db: Session = Depends(get_db)):
-    player = get_player_by_id(db, int(player_id) if player_id.isdigit() else player_id)
+    player = resolve_player(db, player_id)
     if not player:
-        not_found("Player", player_id)
+        raise not_found("Player", player_id)
 
     status = "AVAILABLE"
     if player.slug in ["eduardo-camavinga", "gavi", "martin-odegaard"]:

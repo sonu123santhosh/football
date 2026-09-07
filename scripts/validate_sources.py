@@ -8,7 +8,7 @@ import os
 import re
 import json
 
-WORKSPACE = r"c:\Users\LENOVO\Desktop\web"
+WORKSPACE = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SOURCES_FILE = os.path.join(WORKSPACE, "data", "sources.json")
 
 def load_registered_sources():

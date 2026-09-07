@@ -48,6 +48,27 @@ def get_player_by_slug(db: Session, slug: str) -> Optional[Player]:
     return db.query(Player).filter(Player.slug == slug).first()
 
 
+def resolve_player(db: Session, identifier) -> Optional[Player]:
+    """Look up a player by numeric ID or slug (e.g. 'florian-wirtz')."""
+    if identifier is None or identifier == "":
+        return None
+    if isinstance(identifier, int) or (isinstance(identifier, str) and identifier.isdigit()):
+        found = get_player_by_id(db, int(identifier))
+        if found:
+            return found
+    if isinstance(identifier, str):
+        slug = identifier.lower().strip()
+        found = get_player_by_slug(db, slug)
+        if found:
+            return found
+        # Common alias: frontend uses vinicius-junior, seed uses vinicius-jr
+        if slug == "vinicius-junior":
+            return get_player_by_slug(db, "vinicius-jr")
+        if slug == "vinicius-jr":
+            return get_player_by_slug(db, "vinicius-junior")
+    return None
+
+
 def get_player_transfers(db: Session, player_id: int) -> List[Transfer]:
     return db.query(Transfer).filter(Transfer.player_id == player_id).all()
 
